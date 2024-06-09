@@ -1,0 +1,119 @@
+// page
+jQuery.extend(jQuery.easing, {
+    easeOutOneBounce: function (x, t, millisecondsSince, startValue, endValue, totalDuration) {
+        var pike = 0.8;
+        var h = 0.2;
+        var pike2 = pike * pike;
+		if (t<0.0001){
+			return 0
+		} else if (t < pike) {
+            return  t * t / pike2;
+        } else {
+            return 1 - h * h + (t - pike - h) * (t - pike - h);
+        }
+    },
+    easeOutBounce: function (x, t, b, c, d) {
+        if ((t /= d) < (1 / 2.75)) {
+            return c * (7.5625 * t * t) + b;
+        } else if (t < (2 / 2.75)) {
+            return c * (7.5625 * (t -= (1.5 / 2.75)) * t + .75) + b;
+        } else if (t < (2.5 / 2.75)) {
+            return c * (7.5625 * (t -= (2.25 / 2.75)) * t + .9375) + b;
+        } else {
+            return c * (7.5625 * (t -= (2.625 / 2.75)) * t + .984375) + b;
+        }
+    }
+});
+function ws_page(options, images, ws_images) {
+    var $ = jQuery;
+	var angle = options.angle || 17;
+    var $this = $(this);
+
+    var effectCont = $("<div>").addClass('ws_effect ws_page').css({
+        position: "absolute",
+        width: "100%",
+        height: "100%",
+        top: "0%",
+        overflow: "hidden"
+    })
+    var ul = ws_images.find(".ws_list");
+    effectCont.hide().appendTo(ws_images);
+
+    this.go = function (next, prev) {
+        function finish() {
+            effectCont.find("div").stop(1, 1);
+            effectCont.hide();
+            effectCont.empty();
+        }
+
+        finish();
+        ul.hide();
+
+        var back = $("<div>").css({
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: "100%",
+            height: "100%",
+            overflow: "hidden",
+            "z-index": 9
+        }).append($(images.get(next)).clone()).appendTo(effectCont);
+
+        var front = $("<div>").css({
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: "100%",
+            height: "100%",
+            overflow: "hidden",
+            outline: '1px solid transparent',
+            "z-index": 10,
+            'transform-origin': "top left",
+            "backface-visibility": "hidden"
+        }).append($(images.get(prev)).clone()).appendTo(effectCont);
+        effectCont.show();
+
+        if(options.responsive < 3) {
+            back.find('img').css('width', '100%');
+            front.find('img').css('width', '100%');
+        }
+
+		var cur = front;
+		
+		var w = cur.width(),
+			h = cur.height();
+		
+		// IE < 9
+		var IE = !document.addEventListener;
+		
+		// animate top image
+        wowAnimate(cur,
+            { rotate: 0 }, { rotate: angle },
+            IE? 0 :2 * options.duration / 3, 'easeOutOneBounce',
+            function() {
+                wowAnimate(cur,
+                    { top: 0 }, { top: "100%" },
+                    (IE?2:1) * options.duration / 3
+                );
+            }
+        );
+
+        // animate back image
+        wowAnimate(back,
+            {top: '-100%'}, {top: '-30%'},
+            IE? 0 :options.duration / 2,
+            function() {
+                wowAnimate(back,
+                    {top: '-30%'}, {top: 0},
+                    (IE?2:1) * options.duration / 2,
+                    "easeOutBounce",
+                    function(){
+                        cur.hide();
+                        finish();
+                        $this.trigger('effectEnd');
+                    }
+                );
+            }
+        );
+    }
+}

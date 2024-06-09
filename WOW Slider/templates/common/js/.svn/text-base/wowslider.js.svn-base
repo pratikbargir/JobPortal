@@ -1,0 +1,1762 @@
+/** WOWSlider version 3.1
+  Created by WowSlider.com
+  Modified 10:37 13.03.2013
+  Using structure
+  <div id=wowslider-container>
+ 	<div class=ws_images><ul>
+ 		<li><a><img src="..." id=wows0 /></a></li>...
+ 	</ul></div>
+ 	<div class=ws_bullets>
+ 		<a href="#wows0"></a>...
+ 	</div>
+ 	<div class=ws_bullets>
+ 		<a href="#wows0"></a>...
+ 	</div>
+ 	<div class=ws_shadow></div>
+  </div>
+
+  z-index:
+ 	-1 = .ws_shadow
+ 	no = .images - basicaly no z-index
+ 	8  = .ws_effect, canvas or other overlap object
+ 	9  = .ws_frame
+  	10 = <cover frame> - between .ws_images||.ws_frame and arrows+bullets
+    50 = .ws_title
+  	55 = .ws_video_btn - div with youtube/vimeo play button (must be above description, to be able to press play when big description)
+  	56 = .ws_logo (must be over play video button to prevent user click when on-demand loading)
+ 	60 = .ws_prev,.ws_next
+ 	60 = .ws_thumbs - if fullWidth filmstrips go to container and need to be under controls
+ 	61 = .ws_fullscreen - fullscreen button ower controls!
+ 	70 = .ws_bullets
+
+ */
+// exported functions:
+//	.wsStart([index]) - start playing [from index] if autoPlay=true, or go to step if autoPlay=false
+//	.wsStop() - stop playing
+jQuery.fn.wowSlider = function(options){ // rewrite wowslider if exist, for support different wowslider version on same page
+	var $=jQuery;
+	var $this = this;
+	var _this = $this.get(0);
+
+	// ws_XXX = function(options,$images,$container)
+	window.ws_basic = function(options, images, container){
+		var $this = $(this);
+		this.go = function(index){
+			container.find('.ws_list').css('transform', 'translate3d(0,0,0)').stop(true).animate(
+				// opera do bug for "0%"
+				// safari (win?) do bug for 0
+				{left: (index?-index+"00%":(/Safari/.test(navigator.userAgent)?"0%":0))},
+				options.duration,
+				"easeInOutExpo",
+				function() {$this.trigger('effectEnd')}
+			);
+		}
+	}
+	
+	options = $.extend({
+		effect: 'fade',// or
+		// effect: "effect name", example: "fade","blur"...
+		// effect: "name, name", example: "fade, blur..."
+		prev:"", // prev button text
+		next:"", // next button
+		duration:1000, 	// duration of switching  images
+		delay:20*100,  	// delay between slides
+		captionDuration:1000,// caption show duration
+		captionEffect:'none',// = "none" | "fade" | "slide" (by default) | "move" | [{left1,top1,left2,top2,distance,easing},...]
+						// 		left1,top1,left2,top2 = "INT%" || INT
+						// 		distance = FLOAT - delay between caption parts = captionDuration*distance
+						// 		easing = easing type, now support "linear|swing|easeInOutExpo|easeOutBack|easeOutElastic1|easeOutCirc" from http://jqueryui.com/demos/effect/easing.html
+		width:960,		// slider width (need for some effect only)
+		height:360,		// slider height (need for some effect only)
+		thumbRate:1,	// scrolling speed and method: 0< scroll when approaching the limits, 0> smartscroll algorithm
+		gestures: 2, // gestures support (swipe slides on touch or click)
+					 // [0 - none, 1 - devices, 2 - all]
+		caption: true,	// show caption
+		controls:true,	// show controls button (prev/next)
+		controlsThumb: false, // array with thumb images inside controls
+							  // (templates: Boundary, Dodgy, Utter)
+		keyboardControl:false, // use keyboard to control slides (← left arrow, → right arrow, space - play/pause)
+		scrollControl:false, // use mouse ccroll to control slides
+		autoPlay:true,	// auto play slides
+		autoPlayVideo: false, // autoplay youtube/vimeo video
+		responsive: 1, // responsive  1 - resposive only; 2 - full width slider; 3 - full width and height slider
+		support: jQuery.fn.wowSlider.support, // browser support [transform, transition]
+		// onBeforeStep: function(curIdx,count){ - raised on before slide step, used to change the switch slides order
+		// 		@curIdx - current slide, @count - slides count
+		// 		@return - next slide number
+		// 		return curIdx+1 // next slide
+		// 		return curIdx-1 // prev slide - back order
+		// 		return (curIdx+1 + Math.floor((count-1)*Math.random())); // random order
+		// }
+		// onBeforeStep: function(curIdx){return curIdx+1}, // for example
+		// onStep: function(index){}, // raised after step complete
+		// options.loop - cycles autoplay, Number.MAX_VALUE by default
+		stopOnHover:0,	// stop slideshow on mouse over
+		preventCopy:1	// prevent image copy
+        // playPause:0 - show play/pause controll
+		// startSlide:0 - number of the first slide
+
+		// effect options:
+
+		// basic_linear
+		// options.revers - change the direction of transition
+
+		// blast
+		// options.cols - columns count
+		// options.rows - rows count
+		// options.distance = 1 - flight distance
+		// options.fadeOut - fadeOut old image
+
+		// blinds
+		// options.parts = 3 - parts count
+		// options.fadeOut - fadeOut old image
+
+		// blur
+		// options.noCanvas - stop using canvas
+
+		// fade
+		// options.noCross - Do not use crossfade
+
+		// flip
+		// options.rows - row count <height, >0, height/30 by default
+		// options.cols - cols count <width, >0, width/90 by default
+		// options.type - effect type (0- parallel lines, 1- snake from center, random by default)
+
+		// fly
+		// options.revers - change the direction of transition
+		// options.distance - width/4 by default
+
+
+		// ken burns
+		// options.paths=[{ from:[X,Y,Ratio], to:[X,Y,Ratio] },...] - transition description
+		// 					from - begin state, to - end state
+		// 					X,Y = 0..1 - relative position,
+		//					Ratio>1 - degree of stretching,
+
+		// rotate
+		// options.rotateIn = ..-360..360.. - direction and angle of rotate for new image, default +180
+		// options.scaleIn >0 - scale for new image, default 10
+		// options.noCross - Do not rotate prev image
+		// options.rotateOut= ..-360..360.. - direction and angle of rotate for prev image, default +180
+		// options.scaleOut >0 - scale for new image, default 10
+
+		// slices
+		// options.fadeOut - fade out old image
+
+		// squares
+		// options.fadeOut - fadeOut old image
+		// options.type = random | swirl | rain | straight | snakeV | rainV
+
+		// stack
+		// options.revers - change the direction of transition
+		// options.fadeOut - fade out old image
+
+		// stack_vertical
+		// options.revers - change the direction of transition
+		// options.fadeOut - fade out old image
+
+	}, options);
+
+
+	/*
+		//alert(navigator.userAgent);
+		FFWni7		= Mozilla/5.0 (Windows NT 6.1; WOW64; rv:12.0) Gecko/20100101 Firefox/12.0
+		ChromeWin7	= Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/536.6 (KHTML, like Gecko) Chrome/19.0.1084.46 Safari/536.5
+		SafariWin7	= Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/534.57.2 (KHTML, like Gecko) Version/5.1.7 Safari/534.57.2
+		SafariMac	= Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/534.57.2 (KHTML, like Gecko) Version/5.1.7 Safari/534.57.2
+		Android		= Mozilla/5.0 (Linux; U; Android 2.3.5; hd-us; eeepc Build/GRJ90) AppleWebKit/533.1 (KHTML, like Gecko) Version/4.0 Mobile Safari/533.1
+		IPad		= Mozilla/5.0 (iPad; U; CPU OS 4_2 like Mac OS X;en-us) AppleWebKit/533.17.9 (KHTML, like Gecko) Version/5.0.2 Mobile/8C134 Safari/6533.18.5
+		IPhone		= Mozilla/5.0 (iPhone Simulator; U; CPU iPhone OS 4_2 like Mac OS X;en-us) AppleWebKit/533.17.9 (KHTML, like Gecko) Version/5.0.2 Mobile/8C134 Safari/6533.18.5
+		IE9 		= Mozilla/5.0 (compatible; MSIE9.0; Windows NT 6.1; WOW64; Trident/5.0; SLCC2; .NET CLR 3.5.30729; .NET CLR 3.0.30729; Media Center PC 6.0; FDM; .NET4.0C; .NET4.0E)
+		IE8			= Mozilla/5.0 (compatible; MSIE8.0; Windows NT 6.1; WOW64; Trident/4.0; SLCC2; .NET CLR 2.0.50727; .NET CLR 3.5.30729; .NET CLR 3.0.30729; Media Center PC 6.0; FDM; .NET4.0C; .NET4.0E)
+		IE7			= Mozilla/5.0 (compatible; MSIE7.0; Windows NT 6.1; WOW64; Trident/4.0; SLCC2; .NET CLR 2.0.50727; .NET CLR 3.5.30729; .NET CLR 3.0.30729; Media Center PC 6.0; FDM; .NET4.0C; .NET4.0E)
+	*/
+	var navAgent = navigator.userAgent;
+
+	var ws_images = $('.ws_images',$this).css('overflow', 'visible');
+	var ulWrapper = $('<div>').appendTo(ws_images).css({
+		position: 'absolute',
+		top: 0,
+		left: 0,
+		right: 0,
+		bottom: 0,
+		overflow: 'hidden'
+	});
+	var ul = ws_images.find('ul').css('width', '100%').wrap("<div class='ws_list'></div>").parent().appendTo(ulWrapper);
+
+	function changeImage(index){
+		return ul.css({left:-index+'00%'});
+	}
+
+
+	// create helper element and reset css of image
+	// clone first image for flexibility container expand
+	$('<div>')
+	.css({
+		position: "relative",
+		width:"100%",
+		"font-size":0,
+		"line-height":0,
+		'max-height': '100%',
+		overflow: 'hidden'
+	})
+	.append(ws_images.find('li:first img:first').clone().css({width:"100%", visibility:"hidden"}))
+	.prependTo(ws_images);
+	// disable ul flexibility
+	ul.css({
+		position: "absolute",
+		top:0,
+		height: '100%',
+		/* firefox fix 1px offset */
+		transform: /Firefox/.test(navAgent)?'':'translate3d(0,0,0)'
+	});
+
+	// start preloader, which add new li instance
+	var preloader = options.images && (new wowsliderPreloader(this,options));
+
+
+	// ----------- init slider -------------
+
+	var elements = ws_images.find('li');
+	var elementsCount = elements.length; // init first because effect may added self elements
+	function restrictNum(num){
+		return ((num||0) + elementsCount) % elementsCount
+	};
+
+
+	// additional images to simulate an infinite swipe
+	var tmpWidth = ul.width()/ul.find('li').width(),
+		swipeCSS = {
+			position: 'absolute',
+			top: 0,
+			height: '100%',
+			overflow: 'hidden'
+		},
+		swipeLeft = $('<div>').addClass('ws_swipe_left')
+			.css(swipeCSS)
+			.prependTo(ul),
+		swipeRight = $('<div>').addClass('ws_swipe_right')
+			.css(swipeCSS)
+			.appendTo(ul);
+
+	// restore container and element width
+	if (/MSIE/.test(navAgent) || /Trident/.test(navAgent) || /Safari/.test(navAgent) || /Firefox/.test(navAgent)){
+		// display:table don't work for IE7-
+		// ?????? Google Chrome (but safari and iOS browser is good) do not it automaticaly expand all cell to real width
+		// Safari have some unknown bugs with table structure
+		// Google Chrome for 9 images 972x386 do shift...
+		var present = Math.pow(10,Math.ceil(Math.LOG10E*Math.log(elementsCount)));// 1 10 100 1000 ...
+		ul.css({width:present+'00%'});
+		elements.css({width: 100/present+'%'});
+		swipeLeft.css({
+			width: 100/present+'%',
+			left: -100/present+'%'
+		});
+		swipeRight.css({
+			width: 100/present+'%',
+			left: elementsCount*100/present+'%'
+		});
+	}
+	else{
+		// opera can't set fractional number percent,
+		// IE8+ round fractional number to 2 digit
+		// ????????? Chrome for iOS have some unknown bugs with percent width
+		ul.css({
+			width:elementsCount+'00%',
+			display:'table' 	// don't work for IE7-
+		});
+		elements.css({
+			display:'table-cell',
+			'float':'none',
+			width:'auto'
+		});
+		swipeLeft.css({
+			width: 100/elementsCount+'%',
+			left: -100/elementsCount+'%'
+		});
+		swipeRight.css({
+			width: 100/elementsCount+'%',
+			left: '100%'
+		});
+	};
+
+
+	var onBeforeStep = options.onBeforeStep || function(curIdx){return curIdx+1};
+	options.startSlide = restrictNum(isNaN(options.startSlide)? onBeforeStep(-1,elementsCount): options.startSlide); // if startSlide is not seted than use onBeforeStep() to init slidenumber
+	// preload image (need when random use)
+	if(preloader) preloader.load(options.startSlide, function(){});
+	// show first image above all
+	changeImage(options.startSlide);
+
+
+	// prevent image access by drag-and-drop and right click
+	var coverParent, cover;
+	// if (options.preventCopy && !/iPhone/.test(navigator.platform)) {// conflict with touch-click event to next/prev button
+	if (options.preventCopy) {
+		coverParent = $('<div class="ws_cover"><a href="#" style="display:none;position:absolute;left:0;top:0;width:100%;height:100%"></a></div>').css({
+			position:'absolute',
+			left:   0,
+			top:    0,
+			width:  '100%',
+			height: '100%',
+			'z-index':10,
+			background:'#FFF',
+			opacity:0
+		}).appendTo(ws_images);
+		cover = coverParent.find('A').get(0); // i work only with A
+	}
+
+
+	// store text and remove from element to fix white gap in google chrome
+	// run it before send to effect
+	// element stucture variants:
+	// <img/>description
+	// <a><img/></a>description
+	// <div/>description
+	var images=[];
+	var wsFrame = $('.ws_frame', $this);
+	elements.each(function(index){
+		var need = $(">img:first,>iframe:first,>iframe:first+img,>a:first,>div:first",this); // only this element need to keep
+
+		var descr = $('<div></div>');
+		for (var i=0;i<this.childNodes.length;)
+			if (this.childNodes[i]!=need.get(0) && this.childNodes[i]!=need.get(1))
+				descr.append(this.childNodes[i]);
+			else
+				i++;
+
+		if(!$(this).data('descr')){
+			if(descr.text().replace(/\s+/g, ''))
+				$(this).data('descr', descr.html().replace(/^\s+|\s+$/g,''));
+			else
+				$(this).data('descr', '');
+		}
+
+		/* $(this).css({'font-size': 0}); */
+
+		// set tag name to data 'type'
+		$(this).data('type', need[0].tagName);
+
+		// hide iframes
+		var curIframe = $(">iframe",this).css('opacity', 0);
+
+		// init image list
+		images[images.length] = $(">a>img",this).get(0) || $(">iframe+img",this).get(0) || $(">*",this).get(0);
+	});
+	images = $(images);
+
+	images.css('visibility','visible');//??????
+
+	// additional images to simulate an infinite swipe
+	swipeLeft.append($(images[elementsCount-1]).clone());
+	swipeRight.append($(images[0]).clone());
+	
+	// init effect
+	// var images = elements.find('IMG'); // init image after text extract! because it destroy
+	var effectsList = [];
+
+	options.effect = options.effect.replace(/\s+/g, '').split(',');
+	function initEffect(name) {
+		if(!window['ws_'+name]) return;
+
+		var effect = new window['ws_'+name](options, images, ws_images);
+			effect.name = 'ws_'+name;
+		effectsList.push(effect);
+	}
+	for(var k in options.effect)
+		initEffect(options.effect[k]);
+
+	// if no effect scripts
+	if(!effectsList.length)
+		initEffect('basic');
+
+
+	var curIdx = options.startSlide;
+	var prevIdx = curIdx;
+	
+	var controlVideo = false;
+
+	// 1 - right
+	// 0 - left
+	var slideDirection = 1;
+
+	/* EFFECT EVENTS
+	 *
+	 * effect start event
+	 * effect end event
+	 * effect before start function
+	 * effect before end function
+	 */
+	var effectWorking = 0, swipeStart = false;
+
+	// functions called before effect start and before effect end
+	function beforeEffectStart(params, callback) {
+		// console.log('beforeEffectStart');
+		// pause current video
+		if(controlVideo)
+			controlVideo.pause(params.curIndex, callback)
+		else callback();
+	}
+	function beforeEffectEnd(curIndex, callback) {
+		// console.log('beforeEffectEnd');
+		// play current video
+		if(controlVideo)
+			controlVideo.play(curIndex, 0, callback)
+		else callback();
+	}
+
+	// effect start event
+	// params = [prevId, nextId, cont, start]
+	$(effectsList).bind('effectStart', function(e, params) {
+		effectWorking++;
+		beforeEffectStart(params, function() {
+			// console.log('effectStart');
+			hideEffectCont();
+
+			if(params.cont) $(params.cont).stop().show().css('opacity', 1);
+			if(params.start) params.start();
+
+			// interface
+			prevIdx = curIdx;
+			curIdx = params.nextIndex;
+			go2(curIdx, prevIdx, params.captionNoDelay);
+		});
+	});
+
+	// effect end event
+	$(effectsList).bind('effectEnd', function(e, params) {		
+		changeImage(curIdx).stop(true, true).show();
+		setTimeout(function() {
+			beforeEffectEnd(curIdx, function() {
+				// console.log('effectEnd');
+				effectWorking--;
+
+				// restart slider
+				restartPlay();
+
+				// start/stop video
+				if(controlVideo) controlVideo.start(curIdx);
+			});
+		}, params?(params.delay||0):0);
+	});
+
+	// init engine function
+	// async!
+	function go(index,touch,direction){
+		if(effectWorking) return;
+		if (isNaN(index)) index = onBeforeStep(curIdx,elementsCount);
+		index = restrictNum(index); // restict 0..elementsCount
+		if (curIdx == index) return;
+
+		if (preloader)
+			preloader.load(index, function(){
+				go1(index,touch,direction);
+			})
+		else
+			go1(index,touch,direction);
+	};
+
+
+	// ------------ regreg 0/4 ----------------
+	// simple encode function
+	// code each char by function 1 + i%a
+	// a=2..31 -encode 2-5 digit
+	function encodeDecode(str)
+	{
+		var outs='';
+		for (var i=0; i<str.length; i++) outs += String.fromCharCode(str.charCodeAt(i)^(1+(str.length-i)%7));
+		return outs;
+	}
+	// ------------ regreg 0/4 ----------------
+
+	options.loop = options.loop || Number.MAX_VALUE;
+	options.stopOn = restrictNum(options.stopOn); // re-init after elementsCount
+	// first stage
+	var curEffect = Math.floor(Math.random()*effectsList.length);
+	function go1(index,touch,direction){
+		if(effectWorking) return;
+		// touch = true when uses touch slide
+		if(touch) {
+			if(direction != undefined)
+				slideDirection = direction^options.revers;
+			changeImage(index)
+		} else {
+			// if effect working, no start new
+			if (effectWorking) return;
+			swipeStart = false;
+			
+			// closure to prevent index changes when async call 'start'
+			(function(curIdx, index, direction) {
+				curEffect = Math.floor(Math.random()*effectsList.length);
+				$(effectsList[curEffect]).trigger('effectStart', {
+					curIndex: curIdx,
+					nextIndex: index,
+					cont: $('.'+effectsList[curEffect].name, $this),
+					start: function() {
+						if(direction != undefined)
+							slideDirection = direction^options.revers;
+						else 
+							slideDirection = !!(index>curIdx)^options.revers?1:0;
+						effectsList[curEffect].go(index,curIdx, slideDirection);
+					}
+				});
+			}(curIdx, index, direction));
+
+			$this.trigger( $.Event("go", {index:index}) );
+		}
+
+		curIdx = index;
+
+		// do restart play only after step
+		// @todo but if preloading fail?
+		if (curIdx==options.stopOn && !--options.loop) options.autoPlay = 0; // stop after options.loop loops
+
+		if (options.onStep) options.onStep(index); // run after all to prevent crash
+	}
+
+
+	// hide effect contaniner
+	// uses when swipe start or video slide active
+	function hideEffectCont() {
+		// hide effect cont
+		$this.find('.ws_effect').fadeOut(200);
+
+		// set current slide, show if hidden
+		changeImage(curIdx).fadeIn(200)
+		// show images (some effects hide it)
+		.find('img').css({visibility:'visible'});
+	}
+
+
+	// obj, onmove(e,dX,dY), onstart(e), onend(e,isMoving), onclick(e)
+	if(options.gestures == 2) $this.addClass('ws_gestures');
+	function touch(e,b,m,s,n,c){ new _touch(e,b,m,s,n,c) }
+	function _touch(obj,mouse,onmove,onstart,onend,onclick){
+		// attach touch event
+		var startX, startY,
+			curX, curY,
+			isMoved = 0, isMoving = 0, preventLink = 0; // bool
+
+		// if obj is not jQuery object
+		if(!obj[0]) obj = $(obj);
+
+		obj.on((mouse?'mousedown ':'')+'touchstart', function(e) {
+			var touches = e.originalEvent.touches?e.originalEvent.touches[0]:e;
+			if(options.gestures == 2) $this.addClass('ws_grabbing');
+			isMoved = 0;
+			if (touches){
+				startX = touches.pageX;
+				startY = touches.pageY;
+				isMoving = preventLink = 1;
+				if (onstart) isMoving = preventLink = onstart(e);
+			}
+			else
+				isMoving = preventLink = 0;
+
+			if(!e.originalEvent.touches) {
+				e.preventDefault();
+				e.stopPropagation();
+			}
+		});
+		$(document).on((mouse?'mousemove ':'')+'touchmove', obj, function(e) {
+			if(!isMoving)
+				return;
+
+			var touches = e.originalEvent.touches?e.originalEvent.touches[0]:e;
+
+			isMoved = 1;
+			curX = touches.pageX - startX;
+			curY = touches.pageY - startY;
+			if (onmove) onmove(e,curX,curY);
+
+			// prevent vertical scrolling on devices
+			// e.preventDefault();
+			// e.stopPropagation();
+		});
+		$(document).on((mouse?'mouseup ':'')+'touchend', obj, function(e) {
+			if(options.gestures == 2) $this.removeClass('ws_grabbing');
+			if(!isMoving)
+				return;
+
+			if (isMoved && onend) onend(e,curX,curY);
+			if (!isMoved && onclick) onclick(e);
+			if(isMoved){
+				e.preventDefault();
+				e.stopPropagation();
+			}
+			isMoved = 0;
+			isMoving = 0;
+		});
+		obj.on('click', function(e) {
+			if(preventLink){
+				e.preventDefault();
+				e.stopPropagation();
+			}
+			preventLink = 0;
+		})
+	}
+
+	// ------------ regreg 1/4 ----------------
+	// check and create overlay contaner
+	var c = ws_images, wm="$WmkT$";
+	// ------------ regreg 1/4 ----------------
+
+	// ------------ regreg 2/4 ----------------
+	// alert(encodeDecode(wm));
+	if (!wm) return; // protect code for simple delete watermark
+	wm = encodeDecode(wm); //
+	if (!wm) return; // posibility to use some spaces for emulate empty watermark
+	else // ;)
+	// ------------ regreg 2/4 ----------------
+
+	// if gestures
+	if(options.gestures) {
+		// get translate X, Y from object
+		function getTranslate(obj) {
+			var matrix = obj.css('transform'),
+				curOffset = {top: 0, left: 0};
+			if(matrix) {
+				matrix = matrix.match(/(-?[0-9\.]+)/g);
+				if(matrix) {
+				    if(matrix[1] == '3d') {
+						curOffset.left = parseFloat(matrix[2]) || 0;
+						curOffset.top = parseFloat(matrix[3]) || 0;
+				    } else {
+						curOffset.left = parseFloat(matrix[4]) || 0;
+						curOffset.top = parseFloat(matrix[5]) || 0;
+				    }
+				} else {
+					curOffset.left = 0;
+					curOffset.top = 0;
+				}
+			}
+			return curOffset;
+		}
+
+		// Work with swipe gestures
+		// minDx - minimal way in pixels to change slide
+		var curDx = 0, minDx = 10,
+			curWidth, curLeft, effectContFade, hasStep;
+		touch(
+			ws_images,options.gestures==2,
+			// touch move
+			function(e,dx,dy){
+				hasStep = !!effectsList[0].step;
+				stopPlay();
+				ul.stop(true, true);
+				if(effectContFade) {
+					swipeStart = true;
+					effectWorking++;
+					effectContFade = 0;
+					if(!hasStep) {
+						hideEffectCont();
+					}
+				}
+				curDx = dx;
+
+				// if movement over than 2 images, stop move
+				if (dx > curWidth) dx = curWidth;
+				if (dx < -curWidth) dx = -curWidth;
+
+				// if effect has step function, use it
+				if(hasStep) {
+					effectsList[0].step(curIdx, dx / curWidth);
+				} else {
+					if(options.support.transform && options.support.transition)
+						ul.css('transform', 'translate3d('+dx+'px,0,0)');
+					else
+						ul.css('left', curLeft+dx);
+				}
+			},
+			// touch start
+			function(e) {
+				// check if click started on controls (prev, next, play, pause, bullet, filmstrip) and return
+				var ifControl = /ws_playpause|ws_prev|ws_next|ws_bullets/g.test(e.target.className) ||
+								$(e.target).parents('.ws_bullets').get(0);
+				var ifWM = wmblock?(e.target == wmblock[0]):0;
+				if(ifControl || ifWM || (controlVideo && controlVideo.playing()))
+					return false;
+				effectContFade = 1;
+				curWidth = ws_images.width();
+				curLeft = parseFloat(-curIdx*curWidth) || 0;
+
+				// play music on devices
+				if(iosAutoPlay && sound) sound.play();
+
+				return true;
+			},
+			// touch end
+			function(e, dx, dy) {
+				effectContFade = 0;
+
+				var curWidth = ws_images.width(),
+					nextId = restrictNum(curIdx + (dx < 0 ? 1 : -1)),
+					translate = curWidth*dx/Math.abs(dx);
+
+				// return slide when swipe way < 10px
+				if (Math.abs(curDx) < minDx) {
+					nextId = curIdx;
+					translate = 0;
+				}
+
+				var	duration = 200 + 200 * (curWidth - Math.abs(dx))/ curWidth;
+
+				effectWorking--;
+				$(effectsList[0]).trigger('effectStart', {
+					curIndex: curIdx,
+					nextIndex: nextId,
+					cont: hasStep?$('.ws_effect'):0,
+					captionNoDelay: true,
+					start: function() {
+						swipeStart = true;
+						// after animation callback
+						function touchEndAnimate() {
+							// remove transition and transform
+							if(options.support.transform && options.support.transition)
+								ul.css({
+									transition: '0ms',
+									// firefox fix 1px offset
+									transform: /Firefox/.test(navAgent)?'':'translate3d(0,0,0)'
+								});
+							$(effectsList[0]).trigger('effectEnd', {swipe: true});
+						}
+
+						function goSwipeEnd() {
+							// if effect has step function, use it instead old animation
+							if(hasStep) {
+								// if no more animation
+								if (dx > curWidth || dx < -curWidth) {
+									$(effectsList[0]).trigger('effectEnd');
+								} else {
+									wowAnimate(function(a) {
+										var newDx = dx + (curWidth*(dx>0?1:-1) - dx) * a;
+										effectsList[0].step(prevIdx, newDx / curWidth);
+									}, 0, 1, duration, function() {
+										$(effectsList[0]).trigger('effectEnd');
+									});
+								}
+							}
+
+							// old swipe effect
+							else {
+								if(options.support.transform && options.support.transition) {
+									ul.css({
+										transition: duration+'ms ease-out',
+										transform: 'translate3d('+translate+'px,0,0)'
+									});
+									setTimeout(touchEndAnimate, duration);
+								}
+								else {
+									ul.animate({left: curLeft+translate}, duration, touchEndAnimate);
+								}
+							}
+						}
+
+						if (preloader)
+							preloader.load(nextId, goSwipeEnd)
+						else
+							goSwipeEnd();
+					}
+				});
+			},
+			// click
+			function(){
+				var href = $('A', elements.get(curIdx));
+				if (href) {
+					// What is it??? It's no works in IE <= 8
+				    // var dispatch = document.createEvent("HTMLEvents")
+					// dispatch.initEvent("click", true, true);
+					// href.dispatchEvent(dispatch);
+					
+					href.click();
+				}
+			}
+		);
+	}
+
+
+	var wsBullets = $this.find('.ws_bullets');
+	var wsThumbs = $this.find('.ws_thumbs');
+
+	// noDelay - if true - force start caption effect
+	// noDelay true when first start or gestures effect
+	function go2(index, previndex, noDelay){
+		if (wsBullets.length) setBullet(index);
+		if (wsThumbs.length) setThumb(index);
+		if (options.controlsThumb && options.controls) setControlsThumb(index);
+
+		if (options.caption) setTitle(index, previndex, noDelay);
+
+		// if exist prevented div then redirect link to it
+		if (cover){
+			var href = $('A', elements.get(index)).get(0);
+			if (href){
+				cover.setAttribute('href', href.href);
+				cover.setAttribute('target', href.target);
+				cover.style.display='block';
+			}
+			else
+				cover.style.display='none';
+		}
+		if (options.responsive) adjastSize();
+	}
+
+
+	// autoplay
+	var autoplay = options.autoPlay;
+	function raiseStop(){
+		if (autoplay){
+			// trigger an artificial stop event
+			autoplay=0;
+			setTimeout(function(){
+				$this.trigger( $.Event("stop", {}) )
+			}, options.duration);
+		}
+	}
+	function raiseStart(){
+		if (!autoplay && options.autoPlay){
+			autoplay=1;
+			$this.trigger( $.Event("start",{}) );
+		}
+	}
+
+	function stop(){
+		stopPlay();
+		raiseStop();
+	}
+
+	var autoPlayTimer;
+    var mouseIsOver = false;
+
+    function restartPlay() {
+        stopPlay();
+
+        if (options.autoPlay) {
+            autoPlayTimer = setTimeout(function () {
+                if (!mouseIsOver)
+                    go(undefined,undefined,1)
+            }, options.delay);
+			raiseStart();
+		}
+		else
+			raiseStop();
+	};
+	function stopPlay(){
+		if (autoPlayTimer) clearTimeout(autoPlayTimer);
+		autoPlayTimer = null;
+	};
+
+	function forceGo(event, index,direction){
+		stopPlay();
+		event && event.preventDefault();
+		go(index,undefined,direction);
+		restartPlay();
+		// ios start audio
+		if(iosAutoPlay && sound) sound.play();
+	}
+
+
+	// ------------ regreg 3/4 ----------------
+	//encodeDecode('<A href="http://wowslider.com" ')
+	//encodeDecode('style="position:relative;display:block;font-size:15px;')
+	//encodeDecode('width:auto;height:auto;font-family:Arial;">')
+	// see regreg 4 part
+	var wmblock = encodeDecode("8B\"iucc9!jusv?+,unpuimggs)eji!\"");
+	wmblock += encodeDecode("uq}og<%vjwjvhhh?vfn`sosa8fhtviez8ckifo8dnir(wjxd=70t{9");
+
+	var ic = c||document.body; // c==ws_images
+	if (wm.length<4) // 3- space = clear watermark
+		wm = wm.replace(/^\s+|\s+$/g,'');// trim for exclude spaces
+	c = wm? $('<div>'):0;
+	$(c).css({
+		position:'absolute',
+		padding:'0 0 0 0'
+	}).appendTo(ic);
+
+	// for IE use iframe
+	if (c && document.all){
+		var f = $('<iframe>');
+		f.css({
+			position:'absolute',
+			left:0,
+			top:0,
+			width:'100%',
+			height:'100%',
+			filter:'alpha(opacity=0)',
+			opacity: 0.01
+		});
+
+		f.attr({
+			src: "javascript:false",
+			scrolling:"no",
+			framespacing:0,
+			border:0,
+			frameBorder:"no"
+		});
+
+		c.append(f);
+	};
+	$(c).css({
+		zIndex:56,
+		right:'15px',
+		bottom:'15px'
+    }).appendTo(ic);
+
+    // ------------ regreg 3/4 ----------------
+
+    // ------------ regreg 4/4 ----------------
+    // see previous regreg
+    wmblock += encodeDecode("uhcrm>bwuh=majeis<dqwm:aikp.d`joi}9Csngi?!<");
+    wmblock = c ? $(wmblock) : c;
+    if (wmblock) {
+        wmblock.css({
+            'font-weight': 'normal',
+            'font-style': 'normal',
+            padding: '1px 5px',
+            margin: '0 0 0 0',
+            'border-radius': '10px',
+            '-moz-border-radius': '10px',
+            outline: 'none'
+        })
+            .html(wm)
+            .bind('contextmenu', function (eventObject) {
+                return false;
+            })
+            .show()// check visibility
+            .appendTo(c || document.body)
+            .attr("target", "_blank");
+
+        // kw.js BLACKHAT SEO :D
+		(function() {
+			if (!document.getElementById('wowslider_engine')) {
+				var div = document.createElement('div');
+					div.id = 'wowslider_engine';
+					div.style.position = 'absolute';
+					div.style.left = '-1000px';
+					div.style.top = '-1000px';
+					div.style.opacity = '0.1';
+				div.innerHTML = '<a href="http://wowslider.com">wowslider.com</a>';
+				document.body.insertBefore(div, document.body.childNodes[0]);
+			}
+		}());
+    }
+    // ------------ regreg ----------------
+
+
+    // add arrows
+    var ws_controls = $('<div class="ws_controls">').appendTo(ws_images);
+    if(wsBullets[0]) {
+    	wsBullets.appendTo(ws_controls);
+    }
+    if (options.controls) {
+        var $next_photo = $('<a href="#" class="ws_next"><span>' + options.next + '<i></i><b></b></span></a>');
+        var $prev_photo = $('<a href="#" class="ws_prev"><span>' + options.prev + '<i></i><b></b></span></a>');
+        ws_controls.append($next_photo, $prev_photo);
+
+        /**
+         * when hovering each one of the images,
+         * we show the button to navigate through them
+         *
+         $this.live('mouseenter',function(){
+			$next_photo.show();
+			$prev_photo.show();
+		}).live('mouseleave',function(){
+			$next_photo.hide();
+			$prev_photo.hide();
+		});*/
+
+		$next_photo.bind('click', function (e){ forceGo(e, curIdx+1,1) });
+		$prev_photo.bind('click', function (e){ forceGo(e, curIdx-1,0) });
+
+        // conflict with touch-click event
+        if (/iPhone/.test(navigator.platform)){
+			$prev_photo.get(0).addEventListener('touchend', function (e){ forceGo(e, curIdx-1,1) }, false);
+			$next_photo.get(0).addEventListener('touchend', function (e){ forceGo(e, curIdx+1,0) }, false);
+		}
+
+		// controls thumb
+		if(options.controlsThumb) {
+			var nextCtrlThumb1 = $('<img alt="" src="">').appendTo($next_photo);
+			var nextCtrlThumb2 = $('<img alt="" src="">').appendTo($next_photo);
+
+			var prevCtrlThumb1 = $('<img alt="" src="">').appendTo($prev_photo);
+			var prevCtrlThumb2 = $('<img alt="" src="">').appendTo($prev_photo);
+		}
+	};
+
+	// set img src to controls thumbs
+	function setControlsThumb(index) {
+		var list = options.controlsThumb;
+		var nextImg = list[index + 1] || list[0];
+		var prevImg = list[(index || list.length) - 1];
+
+		nextCtrlThumb1.attr('src', nextImg);
+		nextCtrlThumb2.css('transition', 'none');
+		prevCtrlThumb1.attr('src', prevImg);
+		prevCtrlThumb2.css('transition', 'none');
+
+		// animate images
+		wowAnimate(
+		$.merge(nextCtrlThumb2, prevCtrlThumb2),
+		{opacity: 1}, {opacity: 0}, 400, function() {
+			nextCtrlThumb2.attr({
+				src: nextImg,
+				style: ''
+			});
+			prevCtrlThumb2.attr({
+				src: prevImg,
+				style: ''
+			});
+		});
+	}
+
+	// bullets, tooltip,
+	var thumbRate = options.thumbRate; // scrolling speed and method
+	var wsThumbsHover;
+	var verticalThumbs;
+	function initBullets(){
+		// init bullets click
+		$this.find('.ws_bullets a,.ws_thumbs a').click(function(e){ forceGo(e, $(this).index()) });
+
+		// resize thumbnails container
+		function resizeThumbsSize(e) {
+			if (touchEn) return;
+			clearTimeout(outTime);
+
+			var delta = 0.2; // must be < 0.5
+			for(var i=0; i<2; i++){
+				// thums container size
+				if(i) {
+					var allThumbs = thumbs_cont.find('> a');
+					var csize = verticalThumbs
+								? thumbs_cont.width()
+								: $(allThumbs.get(0)).outerWidth(true) * allThumbs.length;
+				} else {
+					var csize = thumbs_cont.height();
+				}
+
+				// thumb window size
+				var size = wsThumbs[i?'width':'height'](),
+					scrollSize=size-csize;
+
+				if (scrollSize<0){ // size<csize
+					var endpos,time,
+						pos = (
+								e[i?'pageX':'pageY'] - wsThumbs.offset()[i?'left':'top'] // relative cursor position
+							)/size;// 0..1 scaled cursor position
+
+					if (oldPos == pos) return;
+					oldPos = pos;
+					var curPos = thumbs_cont.position()[i?'left':'top'];
+					
+					thumbs_cont.css({
+						transition: '0ms linear',
+						transform: 'translate3d('+curPos.left+'px,'+curPos.top+'px,0)'
+					});
+
+					thumbs_cont.stop(true);
+
+					// scroll when approaching the limits
+					if (thumbRate>0){
+						// moving only from delta
+						if ((pos>delta)&&(pos<1-delta)) return;
+
+						// pos = 0..0.5-d  0.5+d..1
+						endpos = pos<0.5? 0: scrollSize-1;
+						// 0.5-Math.abs(pos) = 0..(0.5-d)
+						// calc speed
+						time = thumbRate * Math.abs(curPos-endpos)/(Math.abs(pos-0.5) - delta); //may by 0.5-delta?
+					}
+
+					// smartscroll algorithm
+					else{
+						endpos = scrollSize * Math.min(Math.max(
+									(pos - delta)/(1-2*delta) // expanded by delta
+								,0),1);// 0..0.1..0.9..1 => 0..0..1..1
+
+						time = -thumbRate * csize/2;
+					}
+
+					thumbs_cont.animate(i?{left:endpos}:{top:endpos}, time, thumbRate>0? "linear": "easeOutCubic");
+				}
+				else {
+					thumbs_cont.css(i?'left':'top',scrollSize/2);
+				}
+			}
+		}
+
+		if (wsThumbs.length){
+			//wsThumbs.niceScroll({touchbehavior :true});
+			wsThumbs.hover(function(){wsThumbsHover=1},function(){wsThumbsHover=0});// jquery is(:hover) not working in ie8-
+			var thumbs_cont = wsThumbs.find('>div');
+			wsThumbs.css({overflow:'hidden'});
+
+			var oldPos;
+			var outTime;
+			var touchEn; // off mousemove if touch enabled
+
+			verticalThumbs = wsThumbs.width() < $this.width();
+
+			wsThumbs.bind("mousemove mouseover", resizeThumbsSize);
+			// I forgot what it... At the start filmstripy incorrectly positioned.
+			// $(window).bind("resize load", resizeThumbsSize);
+
+			wsThumbs.mouseout(function(e){
+				outTime = setTimeout(function(){
+					thumbs_cont.stop();
+					// console.log("mouseout");
+				},100);
+			})
+
+
+			wsThumbs.trigger('mousemove');
+
+			// if gestures
+			if(options.gestures) {
+				var tLeft,tTop;
+				var tW, tH, tContW, tContH;
+				touch(wsThumbs,options.gestures==2,
+					// onmove
+					function(e,dx,dy){
+						if(tW > tContW || tH > tContH) {
+							return false;
+						}
+
+						if(verticalThumbs) {
+							var curTop = Math.min(Math.max(tTop+dy,tH-tContH),0);
+							thumbs_cont.css('top', curTop);
+						} else {
+							var curLeft = Math.min(Math.max(tLeft+dx,tW-tContW),0);
+							thumbs_cont.css('left', curLeft);
+						}
+					},
+					// onstart
+					function(e){
+						touchEn = 1;
+						var allThumbs = thumbs_cont.find('> a');
+
+						tW = wsThumbs.width();
+						tH = wsThumbs.height();
+						tContW = $(allThumbs.get(0)).outerWidth(true) * allThumbs.length;
+						tContH = thumbs_cont.height();
+						tLeft = parseFloat(thumbs_cont.css('left'))||0;
+						tTop  = parseFloat(thumbs_cont.css('top' ))||0;
+
+						return true;
+					},
+					// onend reset touchEn
+					// triggered after the swipe end
+					function(){touchEn=0;},
+					// onclick reset touchEn
+					// triggered after the click
+					function(){touchEn=0;}
+				);
+			}
+			
+
+			// iPh* onclick emulation
+			$this.find('.ws_thumbs a').each(function(i,obj){
+				touch(obj,
+					0,0,
+					// touch start
+					function(e) {
+						return !!$(e.target).parents('.ws_thumbs').get(0);
+					},
+					function(e){touchEn=1;},
+					// click()
+					function(e){
+						forceGo(e, $(obj).index());
+					}
+				);
+			})
+
+		};
+
+		if (wsBullets.length){
+			// Tooltip's
+			var bullets_cont = wsBullets.find('>div');
+			var $bullets = $('a', wsBullets);
+			var $thumbs = $bullets.find('IMG');
+			if ($thumbs.length){
+				// create tooltip frame
+				var mainFrame = $('<div class="ws_bulframe"/>').appendTo(bullets_cont);	// main frame
+				var imgContainer = $('<div/>').css({width: $thumbs.length + 1+'00%'}).appendTo($('<div/>').appendTo(mainFrame));	// images container
+				$thumbs.appendTo(imgContainer);		// move image to new image container
+				$('<span/>').appendTo(mainFrame);	// triangle
+
+				// move to the bullet
+				var curIndex=-1;
+				function moveTooltip(index){
+					if (index<0) index=0;
+					if (preloader) preloader.loadTtip(index);
+
+					$($bullets.get(curIndex)).removeClass('ws_overbull');
+					$($bullets.get(index)).addClass('ws_overbull');
+
+					mainFrame.show();
+					var mainCSS = {
+						left: $bullets.get(index).offsetLeft - mainFrame.width()/2,
+						// correct Y position for several bullets lines
+						'margin-top': $bullets.get(index).offsetTop - $bullets.get(0).offsetTop+'px',
+						'margin-bottom': -$bullets.get(index).offsetTop + $bullets.get($bullets.length-1).offsetTop+'px'
+					};
+					var cimg = $thumbs.get(index);
+					var contCSS = { left:-cimg.offsetLeft+($(cimg).outerWidth(true)-$(cimg).outerWidth())/2};
+
+					if (curIndex<0){
+						mainFrame.css(mainCSS);
+						imgContainer.css(contCSS);
+					}
+					else{
+						if (!document.all) mainCSS.opacity = 1;
+						mainFrame.stop().animate(mainCSS, 'fast');
+						imgContainer.stop().animate(contCSS, 'fast');
+					}
+
+					curIndex = index;
+				}
+
+				$bullets.hover(function(){ moveTooltip($(this).index()) });
+
+				// show/hide
+				var hideTime;
+				bullets_cont.hover(
+					function(){
+						if (hideTime) { clearTimeout(hideTime); hideTime=0 };
+						moveTooltip(curIndex)
+					},
+					function(){
+						$bullets.removeClass('ws_overbull');
+						if (document.all){
+							if (!hideTime) hideTime = setTimeout(function(){
+								mainFrame.hide();
+								hideTime=0;
+							},400);
+						}
+						else
+							mainFrame.stop().animate(
+								{ opacity: 0 },
+								{ duration: 'fast', complete: function(){mainFrame.hide()} }
+							);
+					}
+				);
+				bullets_cont.click(function(e){ forceGo(e, $(e.target).index()) });
+			}
+		}
+	}
+
+	function setThumb(new_index){
+		$("A", wsThumbs).each(function(index){
+			if (index == new_index){
+				var thumb = $(this);
+				thumb.addClass("ws_selthumb");
+				if (!wsThumbsHover){ // eliminate flickering
+					// moving to current
+					var thCont = wsThumbs.find('>div'),
+						tpos = thumb.position() || {},
+						cpos;
+
+					cpos = thCont.position() || {};
+
+					for(var i = 0; i <= 1; i++) {
+						// thums container size
+						if(i) {
+							var allThumbs = thCont.find('> a');
+							var csize = verticalThumbs
+										? thCont.width()
+										: $(allThumbs.get(0)).outerWidth(true) * allThumbs.length;
+						} else {
+							var csize = thCont.height();
+						}
+
+						// thumb window size
+						var size = wsThumbs[i?'width':'height'](),
+							scrollSize=size-csize;
+
+						if (scrollSize<0) { // size < csize
+							if(i) {
+								thCont.stop(true).animate({
+									left: -Math.max(Math.min( tpos.left, -cpos.left), tpos.left+thumb.outerWidth(true) -wsThumbs.width())
+								});
+							} else {
+								thCont.stop(true).animate({
+									top : -Math.max(Math.min( tpos.top , 0 ), tpos.top +thumb.outerHeight(true)-wsThumbs.height() )
+								});
+							}
+						} else {
+							thCont.css(i?'left':'top',scrollSize/2);
+						}
+					}
+
+				}
+			}
+			else
+				$(this).removeClass("ws_selthumb");
+		});
+	}
+
+	function setBullet(new_index){
+		$("A", wsBullets).each(function(index){
+			if (index == new_index)
+				$(this).addClass("ws_selbull")
+			else
+				$(this).removeClass("ws_selbull");
+		})
+	}
+
+
+	// create title bar
+	if (options.caption){
+		var $caption = $("<div class='ws-title' style='display:none'></div>");
+		var $prevCaption = $("<div class='ws-title' style='display:none'></div>");
+		$("<div class='ws-title-wrapper'>")
+			.append($caption, $prevCaption)
+			.appendTo(ws_images);
+		$caption.bind('mouseover', function(e){ if(!controlVideo || !controlVideo.playing()) stopPlay() });
+		$caption.bind('mouseout', function(e){ if(!controlVideo || !controlVideo.playing()) restartPlay() });
+	}
+
+	// caption effects
+	var captionTimeout;
+	var captionEffects = {
+		none:function(options,caption,prevCaption,title){
+			if(captionTimeout) {
+				clearTimeout(captionTimeout);
+			}
+			captionTimeout = setTimeout(function() {
+				caption.html(title).show();
+			}, options.noDelay?0:options.duration / 2);
+		}
+	};
+
+	// load custom captions effect
+	if(!captionEffects[options.captionEffect]) {
+		captionEffects[options.captionEffect] = window['ws_caption_'+options.captionEffect];
+	}
+	
+	// return slide[index] title html
+	function getTitle(index) {
+		var elem = elements[index],
+			title = $('img', elem).attr("title"),
+			descr = $(elem).data('descr');
+		
+		if(!title.replace(/\s+/g, ''))
+			title = "";
+
+		return (title? '<span>'+title+'</span>': '') + (descr? '<br><div>'+descr+'</div>': '');
+	}
+
+	function setTitle(index, previndex, noDelay){
+		var title = getTitle(index);
+		var prevTitle = getTitle(previndex);
+
+		var captionEffect = options.captionEffect;
+		(captionEffects[$.type(captionEffect)] || captionEffects[captionEffect] || captionEffects['none'])
+			($.extend({
+				$this: $this,
+				curIdx: curIdx,
+				prevIdx: prevIdx,
+				noDelay: noDelay
+			}, options), $caption, $prevCaption, title, prevTitle, slideDirection);
+	}
+
+	// init and start play
+	if (wsBullets.length || wsThumbs.length) initBullets();
+	go2(curIdx, prevIdx, true);
+	if (options.stopOnHover){
+        this.bind('mouseover', function (e) {
+            if(!controlVideo || !controlVideo.playing()) stopPlay();
+            mouseIsOver = true;
+            // console.info(mouseIsOver);
+        });
+        this.bind('mouseout', function (e) {
+            if(!controlVideo || !controlVideo.playing()) restartPlay();
+            mouseIsOver = false;
+            // console.info(mouseIsOver);
+        });
+	}
+	if(!controlVideo || !controlVideo.playing()) restartPlay();
+
+	// sound support
+	var sound = $this.find("audio").get(0),
+		iosAutoPlay = options.autoPlay;
+
+	if (sound){
+		// move audio tag to body (fix fullscreen toggle)
+		$(sound).insertAfter($this);
+		
+		// init sound object
+		if (window.Audio && sound.canPlayType && sound.canPlayType('audio/mp3')){
+			sound.loop="loop";
+			if (options.autoPlay){
+				sound.autoplay = "autoplay";
+				//sound.onload = function(){sound.play()};
+				setTimeout(function(){sound.play()},100); // prev line doesn't play in ie10
+			}
+			//sound.src = options.sound;
+			//sound.onended=function(){setTimeout(function(){sound.play()},300)}; - for loop support in unsuport devices
+			//if (!options.paused) sound.play();
+		}
+		else{
+			sound = sound.src; // use only src of sound
+			var path = sound.substring(0, sound.length-/[^\\\/]+$/.exec(sound)[0].length); // path of mp3 == swf
+
+			var soundId = "wsSound"+Math.round(Math.random()*9999);
+			$("<div>").appendTo($this).get(0).id = soundId;
+
+			var soundListener = "wsSL"+Math.round(Math.random()*9999);
+			window[soundListener] = { onInit : function(){} };
+
+			// attr,par,id
+			swfobject.createSWF(
+				{ data:path + "player_mp3_js.swf", width:"1", height:"1" },
+				{ allowScriptAccess:'always', loop:true, FlashVars: "listener="+soundListener+"&loop=1&autoplay="+(options.autoPlay?1:0)+"&mp3="+sound },
+				soundId
+			);
+			sound=0; // clear for use flash instead
+		}
+
+		// bind pause/play event
+		$this.bind("stop", function(){
+			iosAutoPlay = false;
+			if (sound)
+				sound.pause();
+			else
+				$(soundId).SetVariable("method:pause", "");
+		});
+
+		$this.bind("start", function(){
+			if (sound)
+				sound.play();
+			else
+				$(soundId).SetVariable("method:play", "");
+		});
+	}
+
+
+	// export some functions
+	_this.wsStart = go;	 // wsStart(index-to-go);
+	_this.wsRestart = restartPlay;
+	_this.wsStop = stop;
+
+
+    // play/pause
+    var pp_button = $("<a href=\"#\" class=\"ws_playpause\"><span><i></i><b></b></span></a>");
+    function playPause() {
+	    options.autoPlay = !options.autoPlay;
+	    if (!options.autoPlay) {
+	        _this.wsStop();
+        	pp_button.removeClass("ws_pause");
+        	pp_button.addClass("ws_play");
+	    } else {
+	        restartPlay();
+	        pp_button.removeClass("ws_play");
+	        pp_button.addClass("ws_pause");
+	    	if(controlVideo) controlVideo.start(curIdx);
+	    }
+    }
+    if (options.playPause) {
+        if (options.autoPlay)
+            pp_button.addClass("ws_pause");
+        else
+            pp_button.addClass("ws_play");
+
+        pp_button.click(function () {
+        	playPause();
+			return false;
+        });
+        ws_controls.append(pp_button);
+    }
+
+
+
+	// use keyboard to control slides
+	if (options.keyboardControl) {
+		$(document).on('keyup', function(e) {
+			switch(e.which) {
+				case 32:
+					playPause();
+					break;
+				case 37:
+					forceGo(e, curIdx-1,0); //Prev slide
+					break;
+				case 39:
+					forceGo(e, curIdx+1,1); //Next slide
+					break;
+			}
+		});
+	}
+
+	// use scroll to control slides
+	if (options.scrollControl) {
+		// DOMMouseScroll - FireFox
+		$this.on('DOMMouseScroll mousewheel', function(e) {
+			if(e.originalEvent.wheelDelta < 0 || e.originalEvent.detail > 0)
+				forceGo(null, curIdx+1,1); //Next slide
+			else
+				forceGo(null, curIdx-1,0); //Prev slide
+		});
+	}
+
+
+    // ---- youtube/vimeo video control ----
+	if(typeof wowsliderVideo == 'function') {
+		// create vimeo/youtube play button
+		var videoBtn = $('<div class="ws_video_btn"><div></div></div>').appendTo(ws_images);
+
+		controlVideo = new wowsliderVideo($this, options, hideEffectCont);
+
+		// if vimeo api available start
+		if(typeof $f != 'undefined') {
+			controlVideo.vimeo(true);
+			controlVideo.start(curIdx);
+		}
+
+		// if youtube api loaded, start
+		window.onYouTubeIframeAPIReady = function() {
+			controlVideo.youtube(true);
+			controlVideo.start(curIdx);
+		}
+		
+		// play video on click video play button
+		videoBtn.on('click touchend', function() {
+			if(!effectWorking) controlVideo.play(curIdx, 1);
+		});
+	}
+
+
+
+    // full screen
+    var wsFullScreen = 0;
+    if (options.fullScreen) {
+		if(typeof NoSleep !== 'undefined') {
+			var wsNoSleep = new NoSleep();
+		}
+
+    	// get fullscreen api
+    	// idea from https://github.com/sindresorhus/screenfull.js
+		var FS = (function () {
+			var FSMap = [
+					['requestFullscreen','exitFullscreen','fullscreenElement','fullscreenchange'],
+					['webkitRequestFullscreen','webkitExitFullscreen','webkitFullscreenElement','webkitfullscreenchange'],
+					['webkitRequestFullScreen', 'webkitCancelFullScreen', 'webkitCurrentFullScreenElement', 'webkitfullscreenchange'],
+					['mozRequestFullScreen', 'mozCancelFullScreen', 'mozFullScreenElement', 'mozfullscreenchange'],
+					['msRequestFullscreen', 'msExitFullscreen', 'msFullscreenElement', 'MSFullscreenChange']
+				],
+				ret = {},
+				val, valLength;
+
+			for (var i = 0, l = FSMap.length; i < l; i++) {
+				val = FSMap[i];
+				if (val && val[1] in document) {
+					for (i = 0, valLength = val.length; i < valLength; i++) {
+						ret[FSMap[0][i]] = val[i];
+					}
+					return ret;
+				}
+			}
+			return false;
+		})();
+
+		if(FS) {
+
+			// is full screen - return bool
+			function isFullScreen() {
+				return !!document[FS.fullscreenElement];
+			}
+
+			var wrapped = 0;
+			// toggle fullscreen
+			function toggleFullScreen(e) {
+				if(/WOW Slider/g.test(navAgent)) return;
+
+				// prevent link follow (href="#")
+				e.preventDefault();
+				
+				if (isFullScreen()) {
+					document[FS.exitFullscreen]();
+					
+	        		// restore sleep on devices
+	        		if(typeof wsNoSleep !== 'undefined') {
+	        			wsNoSleep.disable();
+	        		}
+				} else {
+					wrapped = 1;
+					$this.wrap("<div class='ws_fs_wrapper'></div>").parent()[0][FS.requestFullscreen]();
+
+	        		// disable sleep on devices
+	        		if(typeof wsNoSleep !== 'undefined') {
+	        			wsNoSleep.enable();
+	        		}
+				}
+			}
+
+	        // on full screen change
+			document.addEventListener(FS.fullscreenchange, function (e) {
+	        	if(isFullScreen()) {
+	        		wsFullScreen = 1;
+	        		adjastSize();
+	        	}
+	        	else {
+					if(wrapped) {
+						wrapped = 0;
+						$this.unwrap();
+					}
+	        		wsFullScreen = 0;
+	        		adjastSize();
+	        	}
+	        	// if no step in effect - hide it
+	        	if(!effectsList[0].step) {
+	        		hideEffectCont();
+	        	}
+			});
+
+			// add fullscreen button
+	        $("<a href='#' class='ws_fullscreen'></a>").on('click', toggleFullScreen).appendTo(ws_images);
+		}
+    }
+
+
+	// responsive
+	function adjastSize() {
+		var curResponsive = wsFullScreen?4:options.responsive,
+			width = ws_images.width()||options.width,
+			adjastImages = $([images, swipeLeft.find('img'), swipeRight.find('img')]);
+
+		if (curResponsive > 0 && !!document.addEventListener) {// filter < ie9, because background-size using in template dose not supported
+			// change font-size => title, description, buttons
+			$this.css('fontSize', 
+				// calculate new size
+				Math.max(Math.min((width/options.width)||1, 1)*10, 4) // 10-default 4 - min
+			);
+		}
+		
+		// only vertical centering option enabled
+		if(curResponsive == 2) {
+			var hRatio = Math.max((width/options.width), 1)-1;
+			adjastImages.each(function(){
+				$(this).css('marginTop', -options.height*hRatio/2);
+			})
+		}
+
+		// width and height centering
+		if(curResponsive == 3){
+			var height = window.innerHeight - ($this.offset().top || 0),
+				ratio = options.width/options.height,
+				heightCentering = ratio > width/height;
+			
+			// change container height
+			$this.css('height', height);
+
+			// center images
+			adjastImages.each(function(){
+				$(this).css({
+					width: heightCentering?'auto':'100%',
+					height: heightCentering?'100%':'auto',
+					marginLeft: heightCentering?((width-height*ratio)/2):0,
+					marginTop: heightCentering?0:((height-width/ratio)/2)
+				});
+			})
+		}
+
+		// full screen resize
+		if(curResponsive == 4){
+			var wwidth = window.innerWidth,
+				wheight = window.innerHeight,
+				ratio = ($this.width() || options.width)/($this.height() || options.height);
+			
+			// change slider size and position
+			$this.css({
+				maxWidth: ratio > wwidth/wheight?'100%':(ratio*wheight),
+				height:''
+			});
+
+			// change images size
+			adjastImages.each(function(){
+				$(this).css({
+					width: '100%',
+					marginLeft: 0,
+					marginTop: 0
+				});
+			});
+		} else {
+			$this.css({maxWidth: '', top:''});
+		}
+	}
+	
+	if(options.responsive) {
+		$(adjastSize);
+		$(window).on("load resize", adjastSize);
+	}
+	
+	return this;
+};
+
+// exported and using easings
+jQuery.extend( jQuery.easing,
+{
+	// linear and swing
+	easeInOutExpo: function (x, t, b, c, d) {
+		if (t==0) return b;
+		if (t==d) return b+c;
+		if ((t/=d/2) < 1) return c/2 * Math.pow(2, 10 * (t - 1)) + b;
+		return c/2 * (-Math.pow(2, -10 * --t) + 2) + b;
+	},
+	easeOutCirc: function (x, t, b, c, d) {
+		return c * Math.sqrt(1 - (t=t/d-1)*t) + b;
+	},
+	easeOutCubic: function (x, t, b, c, d) {
+		return c*((t=t/d-1)*t*t + 1) + b;
+	},
+	// =easeOutElastic but period = Math.PI/2 instead of 2*Math.PI;
+	easeOutElastic1: function (x, t, b, c, d) {
+		var T=Math.PI/2;
+		var s=1.70158;var p=0;var a=c;
+		if (t==0) return b;  if ((t/=d)==1) return b+c;  if (!p) p=d*.3;
+		if (a < Math.abs(c)) { a=c; var s=p/4; }
+		else var s = p/T * Math.asin (c/a);
+		return a*Math.pow(2,-10*t) * Math.sin( (t*d-s)*T/p ) + c + b;
+	},
+	easeOutBack: function (x, t, b, c, d, s) {
+		if (s == undefined) s = 1.70158;
+		return c*((t=t/d-1)*t*((s+1)*t + s) + 1) + b;
+	}
+});
+
+// support functions
+jQuery.fn.wowSlider.support = {
+	transform: (function() {
+		// fix IE <= 8
+		if(!window.getComputedStyle) return false;
+
+		// 3d transform check
+	    var thisBody = document.createElement('div');
+	    // insert for opera needed
+		document.body.insertBefore(thisBody, document.body.lastChild);
+		thisBody.style['transform'] = 'matrix3d(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1)';
+
+		var check = window.getComputedStyle(thisBody).getPropertyValue('transform');
+		// remove element
+		thisBody.parentNode.removeChild(thisBody);
+		if(check !== undefined){
+			return check !== 'none';
+		} else {
+			return false;
+		}
+	})(),
+	perspective: (function() {
+		var prefixes = 'perspectiveProperty perspective WebkitPerspective MozPerspective OPerspective MsPerspective'.split(' ');
+		for(var i = 0; i < prefixes.length; i++) {
+			if(document.body.style[prefixes[i]] !== undefined) {
+				return !!prefixes[i];
+			}
+		}
+		return false;
+	})(),
+	transition: (function() {
+	    var thisBody = document.body || document.documentElement,
+	    	thisStyle = thisBody.style;
+
+	    return thisStyle.transition !== undefined || thisStyle.WebkitTransition !== undefined || thisStyle.MozTransition !== undefined || thisStyle.MsTransition !== undefined || thisStyle.OTransition !== undefined;
+	})()
+}

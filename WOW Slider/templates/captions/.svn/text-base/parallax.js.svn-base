@@ -1,0 +1,107 @@
+// ws_caption_parallax
+function ws_caption_parallax(options, caption, prevCaption, title, prevTitle, slideDirection) {
+	var $ = jQuery;
+	caption.parent().css({
+		position: 'absolute',
+		top: 0,
+		left: 0,
+		width: '100%',
+		height: '100%',
+		overflow: 'hidden'
+	});
+
+	// set title and description
+	// stop old animation
+	caption.html(title).css('width', '100%').stop(1,1);
+	prevCaption.html(prevTitle).css('width', '100%').stop(1,1);
+
+	// show caption with parallax
+	// capt - new capture
+	// prevCapt - prev capture
+	// title - new capt html
+	// prevTitle - new prevCapt html
+	// captDuration - options.captDuration
+	// direction - slide direction
+	(function showWithParallax(capt, prevCapt, title, prevTitle, captDuration, direction) {
+		var parallax = 15;
+		var contW = options.$this.width();
+		parallax *= contW/100;
+
+		function setTransform(item, value) {
+			return item.css(
+					options.support.transform
+					?{transform: 'translate3d('+value+'px,0px,0px)'}
+					:{marginLeft: value}
+				).css('display','inline-block');
+		}
+
+		if(options.prevIdx == options.curIdx) {
+			setTransform(capt, 0).fadeIn(captDuration/3);
+			setTransform($('>div,>span', capt), 0);
+		} else {
+			var captDescr = $('>div', capt);
+			var prevCaptDescr = $('>div', prevCapt);
+			var captTitle = $('>span', capt);
+			var prevCaptTitle = $('>span', prevCapt);
+
+			var captStart = parallax+contW*(direction?-1:1),
+
+				pcaptEnd = parallax+contW*(direction?1:-1),
+
+				captDescrStart = (direction?-1:1)*parallax;
+
+			// init
+			setTransform(capt, captStart).show();
+			setTransform(prevCapt, 0).show();
+
+			setTransform(captDescr, captDescrStart);
+			setTransform(prevCaptDescr, 0);
+			setTransform(captTitle, 2*captDescrStart);
+			setTransform(prevCaptTitle, 0);
+
+			// animate
+			wowAnimate(function(a) {
+				a = $.easing.swing(a);
+				// current capture
+				setTransform(capt, (1-a)*captStart);
+				// animate previous capture
+				setTransform(prevCapt, a*pcaptEnd);
+			}, 0, 1, options.duration);
+
+
+			var part = 0.8;
+			wowAnimate(function(a) {
+				// a = $.easing.swing(a);
+				a *= part;
+				// cur title/descr animate
+				setTransform(captTitle, (1-a)*2*captDescrStart);
+				setTransform(captDescr, (1-a)*captDescrStart);
+				// prev title/descr animate
+				setTransform(prevCaptTitle, a*(-2*captDescrStart));
+				setTransform(prevCaptDescr, a*(-captDescrStart));
+			}, 0, 1, options.duration, function() {
+				prevCaptTitle.css('opacity', 0);
+				prevCaptDescr.css('opacity', 0);
+
+				// start new animation after end
+				wowAnimate(function(a) {
+					a = $.easing.easeOutCubic(1, a, 0, 1, 1, 1);
+
+					var startct = (1-part)*2*captDescrStart,
+						startcd = (1-part)*captDescrStart,
+						startpct = part*(-2*captDescrStart),
+						startpcd = part*(-captDescrStart);
+
+					// cur title/descr animate
+					setTransform(captTitle, (1-a)*startct);
+					setTransform(captDescr, (1-a)*startcd);
+					// prev title/descr animate
+					setTransform(prevCaptTitle, (1-a)*startpct+a*(-2*captDescrStart));
+					setTransform(prevCaptDescr, (1-a)*startpcd+a*(-captDescrStart));
+
+				/* firefox fix - when effect duration too long there is jerks */
+				}, 0, 1, (/Firefox/g.test(navigator.userAgent)?1500:options.delay));
+			});
+		}
+	}(caption, prevCaption, title, prevTitle, options.captionDuration, slideDirection));
+}

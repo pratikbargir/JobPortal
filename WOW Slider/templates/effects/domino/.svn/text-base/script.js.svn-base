@@ -1,0 +1,135 @@
+// ws_domino
+// options.columns - number of columns
+// options.rows - number of rows
+// options.centerRow - row index of center block(calculating duration)
+// options.centerColumn - column index of center block(calculating duration)
+jQuery.extend(jQuery.easing, {
+    easeInOutSine: function (e, f, a, h, g) {
+        return -h / 2 * (Math.cos(Math.PI * f / g) - 1) + a
+    }
+});
+function ws_domino(options, images, ws_images) {
+    $ = jQuery;
+    var $this = $(this);
+    var columns = options.columns || 5,
+        rows = options.rows || 2,
+        centerRow = options.centerRow || 2,
+        centerColumn = options.centerColumn || 2;
+
+    var effectCont = $("<div>").addClass('ws_effect ws_domino').css({
+        position: "absolute",
+        width: "100%",
+        height: "100%",
+        top: 0,
+        overflow: "hidden"
+    }).appendTo(ws_images);
+    var zoomCont = $("<div>").addClass('ws_zoom').appendTo(effectCont);
+    var partsCont = $("<div>").addClass('ws_parts').appendTo(effectCont);
+
+    var ul = ws_images.find(".ws_list");
+    var counter;
+
+    this.go = function (next, prev) {
+        function finish() {
+            partsCont.find("img").stop(1, 1);
+            partsCont.empty();
+            zoomCont.empty();
+            counter = 0;
+        }
+
+        finish();
+
+        var imgParams = $(images.get(prev));
+            imgParams = {
+                width: imgParams.width(),
+                height: imgParams.height(),
+                marginTop: parseFloat(imgParams.css('marginTop')),
+                marginLeft: parseFloat(imgParams.css('marginLeft'))
+            };
+
+        var zoomImg = $(images.get(prev)).clone().appendTo(zoomCont).css({
+            position: "absolute",
+            top: 0,
+            left: 0
+        }).css(imgParams);
+
+        var animWidth = effectCont.width();
+        var animHeight = effectCont.height();
+
+        var boxWidth = Math.floor(animWidth / columns);
+        var boxHeight = Math.floor(animHeight / rows);
+
+        var lastWidth = animWidth - boxWidth * (columns - 1);
+        var lastHeight = animHeight - boxHeight * (rows - 1);
+
+
+        function getRandom(min, max) {
+            return Math.random() * (max - min + 1) + min;
+        }
+
+        ul.hide();
+
+        var boxes = [];
+        for (var i = 0; i < rows; i++) {
+            boxes[i] = [];
+            for (var j = 0; j < columns; j++) {
+                var boxduration = options.duration * (1 - Math.abs((centerRow * centerColumn - i * j) / (2 * rows * columns)));
+
+                var actualWidth = j < columns - 1 ? boxWidth : lastWidth;
+                var actualHeight = i < rows - 1 ? boxHeight : lastHeight;
+
+                boxes[i][j] = $("<div>").css({
+                    width: actualWidth,
+                    height: actualHeight,
+                    position: "absolute",
+                    top: i * boxHeight,
+                    left: j * boxWidth,
+                    overflow: "hidden"
+                });
+                var si = getRandom(i - 2, i + 2);
+                var sj = getRandom(j - 2, j + 2);
+
+                boxes[i][j].appendTo(partsCont);
+
+                var img = $(images.get(next)).clone().appendTo(boxes[i][j]).css(imgParams);
+                var from = {
+                    top: -si * boxHeight,
+                    left: -sj * boxWidth,
+                    opacity: 0
+                };
+                var to = {
+                    top: -i * boxHeight,
+                    left: -j * boxWidth,
+                    opacity: 1
+                };
+                
+                if(options.support.transform && options.support.transition) {
+                    from.translate = [from.left, from.top, 0];
+                    to.translate = [to.left, to.top, 0];
+                    delete from.top;
+                    delete from.left;
+                    delete to.top;
+                    delete to.left;
+                }
+                
+                wowAnimate(img.css({position: 'absolute'}),
+                    from, to, boxduration, 'easeInOutSine',
+                    function() {
+                        counter++;
+                        if (counter == rows * columns) {
+                            finish();
+                            ul.stop(1, 1);
+                            $this.trigger('effectEnd');
+                        }
+                    }
+                );
+            }
+        }
+
+        // zoom img animate
+        wowAnimate(zoomImg,
+            { scale: 1 }, { scale: 1.6 },
+            options.duration, options.duration*0.2, 'easeInOutSine'
+        );
+    }
+}

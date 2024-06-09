@@ -1,0 +1,534 @@
+// louvers
+// options.cols - number of cols
+// options.perspective - 3d perspective size
+
+// easing functions
+jQuery.extend( jQuery.easing,
+{
+	easeInBack: function (x, t, b, c, d, s) {
+		if (s == undefined) s = 1.70158;
+		return c*(t/=d)*t*((s+1)*t - s) + b;
+	},
+	easeOutBack: function (x, t, b, c, d, s) {
+		if (s == undefined) s = 1.70158;
+		return c*((t=t/d-1)*t*((s+1)*t + s) + 1) + b;
+	},
+	easeInBackQ: function (x, t, b, c, d, s) {
+		var ts=(t/=d)*t;
+		return b+c*ts*(4*t*ts-8*ts+8*t-3);
+	},
+	easeOutBackQ: function (x, t, b, c, d, s) {
+		var ts=(t/=d)*t;
+		return b+c*(4*ts*t*ts-12*ts*ts+16*ts*t-13*ts+6*t);
+	},
+	easeInBackQ2: function (x, t, b, c, d, s) {
+		var ts=(t/=d)*t;
+		return b+c*ts*(1.5*t*ts-2.5*ts+5*t-3);
+	},
+	easeOutBackQ2: function (x, t, b, c, d, s) {
+		var ts=(t/=d)*t;
+		return b+c*(1.5*ts*t*ts-5*ts*ts+10*ts*t-12*ts+6.5*t);
+	}
+});
+function ws_louvers(options, images, aCont){
+	var $ = jQuery,
+		$this = $(this),
+		columns = options.cols || 10,
+		centerColumn = 2.5,
+		centerRow = 2,
+		perspective = options.perspective || 2000,
+		ul = aCont.find('.ws_list'),
+		partsOut = [],
+		partEdgeSize = 5,
+		partEdgeColor = {},
+		effectCont = $('<div>').addClass('ws_effect ws_louvers').appendTo(aCont),
+		use3d = options.support.transform && options.support.transition && options.support.perspective,
+		safari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent) && !/WOW Slider/g.test(navigator.userAgent);
+
+	var tileParams = [];
+	
+	effectCont.css({
+		position: 'absolute',
+		top: 0,
+		left: 0,
+		width: aCont.width(),
+		height: aCont.height(),
+		transform: 'translate3d(0,0,0)',
+		transformOrigin: (options.width/2)+'px '+(options.height/2)+'px 0',
+		perspective: perspective+2000
+	}).hide();
+
+	// init all parts
+	for(var index=0; index<columns; index++){
+		var i = index % columns,
+			j = Math.floor(index/columns);
+		
+		var wrapperPart = $('<div>').css({
+				position:'absolute',
+				left: 100*i/columns+'%',
+				top: 0,
+				outline: '1px solid transparent',
+				// prevent firefox and safari glitches
+				transformStyle: safari?'flat':'preserve-3d',
+
+				overflow: use3d?'visible':'hidden'
+			}).appendTo(effectCont),
+			curPart = $('<div>').css({
+					transform: 'scale(1) rotateX(0) rotateY(0) translate3d(0,0,0)',
+					outline: '1px solid transparent',
+					transformStyle: 'preserve-3d'
+				}).appendTo(wrapperPart),
+			frontImg = $('<div>').addClass('ws_front_image').appendTo(curPart),
+			backImg = use3d?$('<div>').addClass('ws_back_image').appendTo(curPart):0;
+
+
+		frontImg.css({
+			position: 'absolute',
+			width: '100%',
+			height: '100%',
+			overflow: 'hidden',
+			backfaceVisibility: 'hidden',
+			transform: 'translate3d(0,0,0)'
+		}).append($('<img>').css({
+			left: -i*100+'%',
+			top: -j*100+'%',
+			position: 'absolute',
+			outline: '1px solid transparent'
+		}));
+		if(use3d) {
+			backImg.css({
+				position: 'absolute',
+				width: '100%',
+				height: '100%',
+				overflow: 'hidden',
+				backfaceVisibility: 'hidden',
+				transform: 'rotateY(180deg) translate3d(0,0,'+partEdgeSize+'px)'
+			}).append($('<img>').css({
+				left: -i*100+'%',
+				top: -j*100+'%',
+				position: 'absolute',
+				outline: '1px solid transparent'
+			}));
+		}
+
+		var tmpEdges = {position: 'absolute',outline: '1px solid transparent'}
+		partsOut[index] = {
+			part: curPart,
+			front: frontImg,
+			back: backImg,
+			wrapper: wrapperPart,
+			leftEdge: use3d?$('<div>').addClass('ws_left_edge').css(tmpEdges).appendTo(curPart):0,
+			rightEdge: use3d?$('<div>').addClass('ws_right_edge').css(tmpEdges).appendTo(curPart):0,
+			topEdge: use3d?$('<div>').addClass('ws_top_edge').css(tmpEdges).appendTo(curPart):0,
+			bottomEdge: use3d?$('<div>').addClass('ws_bottom_edge').css(tmpEdges).appendTo(curPart):0
+		}
+	};
+
+
+	function getPartsColor(i) {
+		var result = {},
+			img = images.get(i),
+			imgW = options.width/columns,
+			imgH = options.height;
+
+		for(var k = 0; k < columns; k++) {
+			var i = k % columns,
+				j = Math.floor(k/columns);
+
+			result[k] = RGBaster(img, {x:i*imgW,y:j*imgH,w:imgW,h:imgH});
+		}
+
+		return result;
+	}
+
+	// update edge sizes
+	function updateEdges(edgeSize, parts, color, partW, partH) {
+		// When mootools -> partsOut[k] == function
+		for(var k in parts) if(typeof partsOut[k] !== 'function') {
+			parts[k].topEdge.css({
+				width: partW,
+				height: edgeSize,
+				background: color[k],
+				transform: 'rotateX(90deg) translate3d(0,-'+edgeSize/2+'px,'+edgeSize/2+'px)'
+			});
+			parts[k].bottomEdge.css({
+				width: partW,
+				height: edgeSize,
+				background: color[k],
+				transform: 'rotateX(90deg) translate3d(0,-'+edgeSize/2+'px,'+(-partH+edgeSize/2)+'px)'
+			});
+			parts[k].leftEdge.css({
+				width: edgeSize,
+				height: partH,
+				background: color[k],
+				transform: 'rotateY(90deg) translate3d('+edgeSize/2+'px,0,-'+edgeSize/2+'px)'
+			});
+			parts[k].rightEdge.css({
+				width: edgeSize,
+				height: partH,
+				background: color[k],
+				transform: 'rotateY(90deg) translate3d('+edgeSize/2+'px,0,'+(partW-edgeSize/2)+'px)'
+			});
+		}
+	}
+	
+
+    function startAnimate(list, callback) {
+    	var end = 0;
+		// When mootools -> partsOut[k] == function
+    	for(var k in list) if(typeof list[k] !== 'function')
+		(function(k, list) {
+		wowAnimate(
+			function(progress) {
+				var halfProgress, halfProgressQ, halfProgressQ2,
+					curTransform = '', curCss = {};
+
+				if(progress <= 0.5){
+					halfProgress = $.easing.easeInBack(1, progress*2, 0, 1, 1, 1).toFixed(3);
+					halfProgressQ = $.easing.easeInBackQ(1, progress*2, 0, 1, 1, 1).toFixed(3);
+					halfProgressQ2 = $.easing.easeInBackQ2(1, progress*2, 0, 1, 1, 1).toFixed(3);
+
+					// IE10+ fix
+					list[k].back.css('backfaceVisibility', 'hidden');
+				} else {
+					halfProgress = $.easing.easeOutBack(1, (progress-0.5)*2, 0, 1, 1, 1).toFixed(3);
+					halfProgressQ = $.easing.easeOutBackQ(1, (progress-0.5)*2, 0, 1, 1, 1).toFixed(3);
+					halfProgressQ2 = $.easing.easeOutBackQ2(1, (progress-0.5)*2, 0, 1, 1, 1).toFixed(3);
+
+					// IE10+ fix
+					list[k].back.css('backfaceVisibility', 'visible');
+				}
+
+
+				for(var n in list[k].animate[progress<=0.5?'half':'end']) {
+					var startProp = list[k].animate[progress<=0.5?'begin':'half'][n] || 0,
+						endProp = list[k].animate[progress<=0.5?'half':'end'][n] || 0;
+
+					if(typeof endProp !== 'object') {
+						if(n === 'scale' || n === 'rotateX' || n === 'rotateY')
+							endProp = startProp+(endProp-startProp)*halfProgressQ;
+						else if(n === 'left' || n === 'top')
+							endProp = startProp+(endProp-startProp)*halfProgressQ2;
+						else
+							endProp = startProp+(endProp-startProp)*halfProgress;
+					}
+
+					if(n === 'rotateX' || n === 'rotateY' || n === 'rotateZ') {
+						curTransform += n + '('+endProp+'deg) ';
+					} else if(n === 'scale') {
+						curTransform += n + '('+endProp+') ';
+					} else if(n === 'translate3d') {
+						curTransform += n +'('+
+							(startProp[0]+(endProp[0]-startProp[0])*halfProgress).toFixed(3)+'px,'+
+							(startProp[1]+(endProp[1]-startProp[1])*halfProgress).toFixed(3)+'px,'+
+							(startProp[2]+(endProp[2]-startProp[2])*halfProgress).toFixed(3)+'px) ';
+					} else {
+						curCss[n] = endProp;
+					}
+				}
+				list[k].wrapper.css({
+					transform: 'translate3d('+(curCss.left?curCss.left:0).toFixed(3)+'px,'+(curCss.top?curCss.top:0).toFixed(3)+'px,0)'
+				});
+				delete curCss.left;
+				delete curCss.top;
+
+				if(curTransform) curCss.transform = curTransform;
+				list[k].part.css(curCss);
+			}, 0, 1,
+			list[k].animate.duration, list[k].animate.delay,
+			function() {
+				end++;
+				if(end == list.length && callback) {
+					callback();
+				}
+			}
+		);
+		}(k, list));
+    }
+
+
+
+	function setPos(partsOut, curIdx, imgParams, callback){
+		var cwidth = aCont.width(),
+			cheight = aCont.height(),
+			pwidth = cwidth/columns,
+			pheight = cheight,
+			maxDelay = (options.duration*0.4)>1000?1000:(options.duration*0.4),
+			new_dur = options.duration*0.6,
+			lastPart = [0, 0]; // 0 - index of part, 1 - delay value
+		
+
+		updateEdges(partEdgeSize, partsOut, partEdgeColor[curIdx], pwidth, pheight);
+		effectCont.css({
+			transformOrigin: (cwidth/2)+'px '+(cheight/2)+'px 0',
+			width: cwidth,
+			height: cheight
+		});
+
+		// set new delay
+		// When mootools -> partsOut[k] == function
+		for(var index in partsOut) if(typeof partsOut[index] !== 'function') {
+			var curDelay = tileParams[index].delay*maxDelay;
+
+			if(lastPart[1] <= curDelay){
+				lastPart[0] = index;
+				lastPart[1] = curDelay;
+			}
+			partsOut[index].part[0].ws_delay = [curDelay, 0];
+		}
+		partsOut[lastPart[0]].part[0].ws_delay[1] = 1;
+
+		// When mootools -> partsOut[k] == function
+		for(var index in partsOut) if(typeof partsOut[index] !== 'function') {
+			var $this = partsOut[index],
+				i = index % columns,
+				j = Math.floor(index/columns),
+				pleft = cwidth*i/columns,
+				ptop = cheight*j;
+
+			$this.animate = {
+				delay: $this.part[0].ws_delay[0],
+				duration: new_dur,
+				begin: {
+					left: 0,
+					top : 0,
+					width: pwidth,
+					height: pheight,
+					scale: 1,
+					rotateX: 0,
+					rotateY: 0,
+					translate3d: [0,0,safari?partEdgeSize:0]
+				},
+				half: {
+					left: tileParams[index].halfLeft*pwidth,
+					top: tileParams[index].halfTop*pheight,
+					scale: tileParams[index].halfScale,
+					rotateX: tileParams[index].rotateX/2,
+					rotateY: tileParams[index].rotateY/2,
+					translate3d: [0,0,(safari?1:0.5)*partEdgeSize]
+				},
+				end: {
+					left: 0,
+					top : 0,
+					scale: 1,
+					rotateX: tileParams[index].rotateX,
+					rotateY: tileParams[index].rotateY,
+					translate3d: [0,0,partEdgeSize]
+				}
+			}
+
+			$this.front.find('img').css(imgParams);
+			$this.back.css('backfaceVisibility', 'hidden').find('img').css(imgParams);
+
+			$this.part.css({
+				width: $this.animate.begin.width,
+				height: $this.animate.begin.height,
+				left: $this.animate.begin.left,
+				top: $this.animate.begin.top
+			});
+		}
+		
+		startAnimate(partsOut, callback);
+	};
+	
+	
+	var thread;
+	this.go = function(newIdx, curIdx){
+		if(thread) return curIdx;
+		effectCont.show();
+		
+		var imgParams = $(images.get(curIdx));
+			imgParams = {
+				width: imgParams.width(),
+				height: imgParams.height(),
+				marginTop: parseFloat(imgParams.css('marginTop')),
+				marginLeft: parseFloat(imgParams.css('marginLeft'))
+			};
+
+		// generate tile params
+		tileParams = (function() {
+			var direction = [0, 1];
+			var scale = [1.2, 0.8];
+			var left = [0.2, 0, -0.2];
+			var rotate = [180, -180];
+
+			direction = direction[Math.floor(Math.random()*(direction.length))];
+			scale = scale[Math.floor(Math.random()*(scale.length))];
+			left = left[Math.floor(Math.random()*(left.length))];
+			rotate = rotate[Math.floor(Math.random()*(rotate.length))];
+
+
+			var max = columns;
+			var result = [];
+
+			for( var k = (direction?0:max); direction?(k <= max):(k >= 0); direction?(k++):(k--) ) {
+				result.push({
+					zIndex: k - (direction?max:0),
+					rotateY: rotate,
+					delay: k / max,
+					halfScale: scale,
+					halfLeft: left
+				});
+			}
+
+			return result;
+		}());
+
+		// start
+		if(use3d) {
+			/* initialization begin */
+			// prevent webkit blinking
+			partsOut[0].front.find('img').on('load', function() {
+				ul.hide();
+			});
+			// When mootools -> partsOut[k] == function
+			for(var k in partsOut) if(typeof partsOut[k] !== 'function') {
+				partsOut[k].front.find('img').attr('src', images.get(curIdx).src);
+				partsOut[k].back.find('img').attr('src', images.get(newIdx).src);
+			}
+
+			// getting dominant image color and start animate
+			if(!partEdgeColor[curIdx]) partEdgeColor[curIdx] = getPartsColor(curIdx);
+			/* initialization end */
+
+			thread = new setPos(partsOut, curIdx, imgParams, function(){
+				ul.show();
+				$this.trigger('effectEnd');
+				effectCont.hide();
+				// When mootools -> partsOut[k] == function
+				for(var index in partsOut) if(typeof partsOut[index] !== 'function') {
+					partsOut[index].part.css({
+						transition: '',
+						transform: 'rotateX(0) rotateY(0) translate3d(0,0,0)'
+					});
+				}
+
+				thread = 0;
+			});
+		}
+
+
+		// Fallback domino effect
+		else {
+			thread = true;
+
+	        function getRandom(min, max) {
+	            return Math.random() * (max - min + 1) + min;
+	        }
+
+	        var cwidth = aCont.width(),
+				cheight = aCont.height(),
+				pwidth = cwidth/columns,
+				pheight = cheight,
+				lwidth = cwidth - pwidth * (columns - 1),
+				lheight = cheight;
+
+			// ie fix
+			effectCont.css({
+				width: cwidth,
+				height: cheight
+			});
+	        var counter = 0;
+			for(var k in partsOut) {
+				var i = k % columns,
+					j = Math.floor(k/columns);
+
+				partsOut[k].front.find('img').attr('src', images.get(newIdx).src).css(imgParams);
+
+                var boxduration = options.duration * (1 - Math.abs((centerRow * centerColumn - i * j) / (2 * columns)));
+
+                var sj = getRandom(-1, 1)>0?1:-1;
+
+                partsOut[k].wrapper.css({
+					width: pwidth,
+					height: pheight
+                });
+
+                partsOut[k].part.css({
+                	position: 'absolute',
+                    top: 0,
+                    left: sj * pwidth,
+                    opacity: 0,
+					width: pwidth,
+					height: pheight
+                })
+                .animate({
+                    left: 0,
+                    opacity: 1
+                }, boxduration, function() {
+                    counter++;
+                    if (counter == columns) {
+                        ul.stop(1, 1);
+                        thread = false;
+                        $this.trigger('effectEnd');
+                    }
+                });
+			}
+		}
+	}
+
+
+
+	// Get Dominant Color Function
+	// Include RGBaster - https://github.com/briangonzalez/rgbaster.js
+	// modifed - wowslider.com
+	function RGBaster(img, opts) {
+		opts = opts || {};
+		var BLOCKSIZE = 1,
+			exclude = opts.exclude || [ ], // for example, to exlude white and black:	[ '0,0,0', '255,255,255' ]
+			data;
+
+		var canvas = document.createElement("canvas"),
+			context = canvas.getContext('2d'),
+			width  = canvas.width  = img.naturalWidth,
+			height = canvas.height = img.naturalHeight;
+		context.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight);
+		
+		try {
+			data = context.getImageData(opts.x?opts.x:0, opts.y?opts.y:0, opts.w?opts.w:img.width, opts.h?opts.h:img.height)['data'];
+		} catch(e) {
+			console.log("error:unable to access image data: " + e)
+			return '#ccc';
+		}
+
+
+		var length = (opts.w?opts.w:img.width * opts.h?opts.h:img.height) || data.length,
+			colorCounts = {},
+			rgbString = '',
+			rgb = [],
+			colors = {
+				dominant: { name: '', count: 0 }
+			};
+
+		// Loop over all pixels, in BLOCKSIZE iterations.
+		var i = 0;
+		while ( i < length ) {
+			rgb[0] = data[i];
+			rgb[1] = data[i+1];
+			rgb[2] = data[i+2];
+			rgbString = rgb.join(",");
+
+			// Keep track of counts.
+			if ( rgbString in colorCounts ) {
+				colorCounts[rgbString] = colorCounts[rgbString] + 1;
+			}
+			else{
+				colorCounts[rgbString] = 1;
+			}
+
+			// Find dominant and palette, ignoring those colors in the exclude list.
+			if ( exclude.indexOf( ['rgb(', rgbString, ')'].join('') ) === -1 ) {
+				var colorCount = colorCounts[rgbString];
+				if ( colorCount > colors.dominant.count ){
+					colors.dominant.name = rgbString;
+					colors.dominant.count = colorCount;
+				}
+			}
+
+			// Increment!
+			i += BLOCKSIZE * 4;
+		}
+
+		return ['rgb(', colors.dominant.name, ')'].join('');
+	};
+}

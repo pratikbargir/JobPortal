@@ -1,0 +1,212 @@
+// options.imagesCount
+function ws_photo(options, images, container){
+	var $ = jQuery,
+		$this = $(this),
+		ul = $('.ws_list', container),
+		isMobile = (/iPhone|iPod|iPad|Android|BlackBerry/).test(navigator.userAgent),
+		imgsCount = images.length,
+		minImagesCount = options.imagesCount || 30,
+		partSize = 30, // 30% of container
+		mainSize = 80, // 80% of conatiner
+		imagesOnDemand = []; // on-demand non loaded images array
+
+	var effectCont = $('<div>').addClass('ws_effect ws_photo').css({
+		position: 'absolute',
+		top: 0,
+		left: 0,
+		width: '100%',
+		height: '100%',
+		overflow: 'hidden',
+		backgroundColor: '#DDDDDD'
+	}).appendTo(container);
+
+	if(!isMobile) var backDark = $('<div>').css({
+		position: 'absolute',
+		top: 0,
+		left: 0,
+		width: '100%',
+		height: '100%',
+		backgroundColor: 'rgba(0,0,0,0.6)',
+		zIndex: 4
+	}).appendTo(effectCont)
+
+	// init,
+	var maxNum = Math.max(minImagesCount, images.length);
+	for(var i = 0, k = 0; i < maxNum; i++){
+		if(k >= images.length){
+			k -= images.length;
+		}
+		$('<div>').addClass('ws_photoItem').css({
+			width: '100%',
+			height: '100%',
+			overflow: 'hidden'
+		}).append(
+			$('<div>').css({overflow: 'hidden', position: 'absolute'}).append($(images[k]).clone())
+		).appendTo(effectCont);
+		
+		// if on-demand
+		if(options.images && i < images.length)
+			imagesOnDemand.push(!options.images[k].noimage);
+
+		k++;
+	}
+
+	var contChild = effectCont.children('.ws_photoItem');
+
+	function fromTo(from, to){
+		// rand * (max - min) + min;
+		return parseFloat(Math.random() * (to - from) + from);
+	}
+
+	// set to img random pos (x, y) + angle
+	// center - bool. If true, img set in center slider
+	// time - ms. Animation time
+	function setRandomPos(item, first, second, zoomIn, time, callback){
+		// init wowParams to prevent errors
+		if(!item[0].wowParams) {
+			item[0].wowParams = {};
+		}
+
+		if(zoomIn && first){
+			var	size = mainSize,
+				x = 50-size/2,
+				// [-10%, 90%] of height container
+				y = 50-size/2,
+				angle = 0,
+				zIndex = 5;
+		} else {
+			var	size = partSize,
+				x = fromTo(-10, 90),
+				// [-10%, 90%] of height container
+				y = fromTo(-10, 90),
+				// [-20, 20]deg
+				angle = fromTo(-30, 30),
+				zIndex = zoomIn?( first?5:(second?3:2) ) : ( first?3:(second?4:2) );
+		}
+
+		var from = {
+			top		: item[0].wowParams.y || 0,
+			left	: item[0].wowParams.x || 0,
+			width	: item[0].wowParams.size || 0,
+			height	: item[0].wowParams.size || 0
+		};
+		var to = {
+			top		: y,
+			left	: x,
+			width	: size,
+			height	: size
+		}
+		// transition animation
+		if(options.support.transform){
+			from = {
+				translate: [(50-from.width/2-from.left) + '%', (50-from.width/2-from.top) + '%', 0],
+				rotate: item[0].wowParams.angle || 0,
+				scale: from.width / 100
+			};
+			to = {
+				translate: [(50-to.width/2-to.left), (50-to.width/2-to.top), 0],
+				rotate: angle || 0,
+				scale: to.width / 100
+			};
+		} else {
+			// prepare values with percent
+			for(var k in from) {
+				from[k] = from[k] + '%';
+			}
+		}
+
+		// start animation
+		wowAnimate(item.css({ position: 'absolute', zIndex: zIndex }),
+			from, to, time, 'swing', callback || 0
+		);
+
+		// store new parameters for next animation
+		item[0].wowParams = {
+			size: size, x: x, y: y, angle: angle, zIndex: zIndex
+		}
+	}
+
+	// init
+	contChild.each(function(k){
+		setRandomPos($(this), options.startSlide==k, false, true, 0);
+	})
+
+	function updateImgParams() {
+		if(options.support.transform){
+			var imgParams = $(images[0]);
+				imgParams = {
+					width: imgParams.width(),
+					height: imgParams.height(),
+					marginTop: parseFloat(imgParams.css('marginTop')),
+					marginLeft: parseFloat(imgParams.css('marginLeft'))
+				};
+			$(contChild).find('img').css(imgParams);
+		} else {
+			$(contChild).find('img').css({
+				width: '100%'
+			});
+		}
+	}
+
+	updateImgParams();
+	$(window).on("load resize", updateImgParams);
+	this.go = function(next, cur){
+		updateImgParams();
+
+		// if on-demand
+		if(options.images && !imagesOnDemand[next]) {
+			imagesOnDemand[next] = true;
+			
+			var numLoad = next;
+			for(;;) {
+				$(contChild[numLoad]).find('img').attr("src", options.images[numLoad % images.length].src);
+				if(numLoad > maxNum) break;
+				numLoad += images.length;
+			}
+		}
+
+		// ie7+
+		if(window.XMLHttpRequest){
+			/* start */
+			// 40% of duration - zoom in/zoom out main image
+			// 20% of duration - shuffle images
+			var collageDuration = options.duration * 0.5;
+
+			// first shuffle
+			contChild.each(function(k){
+				setRandomPos($(this), next==k, cur==k, false, collageDuration);
+			});
+
+
+			// dark background hide
+			if(!isMobile) wowAnimate(backDark,
+				{ opacity: 1 }, { opacity: 0 },
+				collageDuration*0.7, 'swing'
+			);
+
+			// second shuffle
+			setTimeout(function(){
+				contChild.each(function(k){
+					setRandomPos($(this), next==k, cur==k, true, collageDuration, (cur==k?function() {$this.trigger('effectEnd');}:0));
+				});
+
+				// dark background show
+				if(!isMobile) wowAnimate(backDark,
+					{ opacity: 0 }, { opacity: 1 },
+					collageDuration*0.7, 'swing'
+				);
+			}, collageDuration);
+		} else {
+			ul.stop(true).animate(
+				// opera do bug for "0%"
+				// safari (win?) do bug for 0
+				{left: (next?-next+"00%":(/Safari/.test(navigator.userAgent)?"0%":0))},
+				options.duration,
+				"easeInOutExpo",
+				function() {
+					$this.trigger('effectEnd');
+				}
+			);
+		}
+	}
+}

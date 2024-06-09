@@ -1,0 +1,27 @@
+// ws_caption_fade
+;(function() {
+	var captionTimeout;
+	window.ws_caption_fade = function(options, caption, prevCaption, title) {
+		var waiting = options.noDelay?0:(options.duration / 2 - options.captionDuration / 3) / 2;
+		if(waiting < 0) {
+			waiting = 0;
+		}
+
+		// hide old title
+		caption.stop(1,1).delay(waiting).fadeOut(options.captionDuration/3);
+
+		// show new title
+		if(title) {
+			if(captionTimeout) {
+				clearTimeout(captionTimeout);
+			}
+			captionTimeout = setTimeout(function() {
+				caption.stop(1,1).html(title);
+				caption.fadeIn(options.captionDuration, function(){
+					// remove filters
+					if(this.filters) this.style.removeAttribute('filter')
+				});
+			}, options.noDelay?0:(options.duration / 2 + waiting));
+		}
+	}
+}());

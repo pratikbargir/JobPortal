@@ -1,0 +1,222 @@
+// image preloader for WOWSlider.com
+function wowsliderPreloader(slider, options){
+	var $ = jQuery,
+		imagesList = options.images, 
+		fixedImages = [],
+		
+		//logoSrc = 
+		logoSrc =
+			// one pixel transparent
+			"data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"; 
+			// simple animated gif 5x1
+			// "data:image/gif;base64,R0lGODlhCAACAKECAAAAAIKCgv///////yH/C05FVFNDQVBFMi4wAwEAAAAh+QQJCgAAACwAAAAACAACAAACBUxgaJdWACH5BAkKAAIALAAAAAAIAAIAAAIGBBSBYbsFACH5BAkKAAMALAAAAAAIAAIAAAIHTAYwZqhWAAAh+QQBCgADACwAAAAACAACAAACBkxmA5C5BQA7";
+			// one pixel black
+			//logoSrc = "data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs=";
+	
+	// basic preloading function
+	// if no callback then store to fixedImages
+	function preload(url, callback){
+		var img = new Image();
+		if (callback)
+			$(img).bind('load error abort', function(e){
+				if (e.type=='load')
+					callback(url, img);
+			});
+		else 
+			fixedImages[fixedImages.length] = img;
+		img.src = url;
+		return img
+	};
+
+
+	// create and load iframe
+	var iframeReady = []; // undefined - iframe without src, 1 - start loading, 2 - loaded
+	function preloadIframe(index, callback) {
+		if(imagesList[index].iframe) {
+			if(!iframeReady[index]) {
+				iframeReady[index] = 1;
+				imagesList[index].elementIframe.bind('load error abort', function(e) {
+					if (e.type=='load') {
+						iframeReady[index] = 2;
+						if(callback) callback();
+					}
+				});
+
+				// if iframe without src
+				if(!imagesList[index].elementIframe.attr('src')) {
+					var curSrc = imagesList[index].iframe;
+					// set iframe vimeo unique id
+					if(/vimeo.com/.test(imagesList[index].iframe)) {
+						var randomId = 'ws_iframe_' + new Date()*1;
+						curSrc += '&player_id='+randomId;
+						imagesList[index].elementIframe.attr('id', randomId);
+					}
+
+					imagesList[index].elementIframe.attr('src', curSrc);
+				}
+			}
+			else if(iframeReady[index] == 2) {
+				if(callback) callback();
+			}
+		} else {
+			if(callback) callback();
+		}
+	}
+
+	
+	
+	// add preloading logo block
+	preload(logoSrc);
+	
+	
+	// @callback(image_url)
+	// @return 0 - if already loaded
+	// @return 1 - if start loading
+	var lastIndex = 0;
+	function preloadSlide(index, callback){
+		index = (imagesList.length+index) % imagesList.length;
+		
+		if (!imagesList[index]['noimage'] && !imagesList[index]['noiframe']){
+			// preload iframe
+			preloadIframe(index, function() {
+				if (callback) {
+					callback();
+					
+					// predicting if external call
+					preloadSlide(index<lastIndex?index-1:index+1);
+					lastIndex = index;
+				};
+			});
+			
+			return 0;
+		}
+		else{
+			preload(imagesList[index].src, function(url){
+				imagesList[index].image.src = url;
+				imagesList[index].noimage = 0;
+
+				// preload iframe
+				if(callback) preloadIframe(index, function() {
+					imagesList[index].noiframe = 0;
+
+					if (callback && !imagesList[index]['noimage']) {
+						setTimeout(callback, 40); // delay for init image property(width,height) update
+						
+						// predicting if external call
+						preloadSlide(index<lastIndex?index-1:index+1);
+						lastIndex = index;
+					}
+				});
+			});
+			
+			return 1;
+		}
+	}
+	
+	
+	
+	// ---------- init() ----------
+	
+	// add all images
+	var icont = $(' .ws_images ul',slider);
+	var count = icont.find('li').length;
+	var firstSrc = icont.find('img').get(0).src; 
+	for (var i=0; i<imagesList.length; i++)
+		if (imagesList[i]){
+			if (i>=count){
+				var element = $('<li>'
+					+ (imagesList[i].iframe?'<iframe width="100%" height="100%" frameborder="0" allowfullscreen></iframe>':'')
+					+ (imagesList[i].href? '<a href="' + imagesList[i].href + '"'
+						+ (imagesList[i].target?' target="'+imagesList[i].target+'"' :'')
+					+ '>':'')
+					+'<img src="' + firstSrc + '"/>'
+					+ (imagesList[i].href?'</a>':'')
+					+'</li>').appendTo(icont);
+
+				$('img', element).attr("title",imagesList[i].title);
+				element.data('descr', imagesList[i].descr||"");
+				
+				imagesList[i].image = $('img', element).get(0);
+				imagesList[i].noimage = 1;
+				if(imagesList[i].iframe) {
+					imagesList[i].elementIframe = $('iframe', element);
+					imagesList[i].noiframe = 1;
+				}
+				
+				// support path relative from first image path = ./abracadabra
+				if (/^\./.test(imagesList[i].src))
+					imagesList[i].src =  firstSrc.substr(0,firstSrc.lastIndexOf("\/")) + imagesList[i].src.substr(1);
+			} else {
+				if(imagesList[i].iframe)
+					imagesList[i].elementIframe = $(icont.find('li > iframe')[i]);
+			}
+		}
+
+	
+	/*
+	// fix basicaly for WebKit - expand all cell to real width? because webkit do not it automaticaly
+	if (!window.opera)// opera can't set fractional number percent
+		icont.find('li').css({width: Math.round(100*100/imagesList.length)/100+'%'});
+	*/
+	
+	// add all bullets
+	// @todo line thumbnail loading
+	var bcont = $(" .ws_bullets>div",slider);
+	if ($('img',bcont).length){ // if thumbnails need
+		var firstSrc = bcont.find('img').get(0).src; 
+		bcont.find('>a').each(function(i,A){
+			if (imagesList[i]){
+				A.href="#";
+				if (!imagesList[i].thumb) imagesList[i].thumb = imagesList[i].src.replace(/\/images\/([^\/]+)$/,"/tooltips/$1");
+				if (/^\./.test(imagesList[i].thumb))
+					imagesList[i].thumb = firstSrc.substr(0,firstSrc.lastIndexOf("\/")) + imagesList[i].thumb.substr(1);
+				if (!$('img',A).length){
+					imagesList[i].nottip = 1;
+					imagesList[i].ttip = $('<img class="loading" src="'+logoSrc+'"/>').appendTo(A).get(0);
+				}
+			}
+		})
+	}
+	
+	
+	// start preload 2 first images
+	preloadSlide(0); // need for random order and first slide with video iframe
+	preload(firstSrc, function(){preloadSlide(1)});
+	
+	// exported functions
+	this.loadTtip = function(index){
+		if (imagesList[index].nottip)
+			preload(imagesList[index].thumb, function(url){
+				var il=imagesList[index];
+				il.ttip.src = url;
+				il.nottip = 0;
+				$(il.ttip).removeClass('loading');
+			});
+	}
+	
+	// preloader
+	var logo = $("<div class='ws_logo'></div>").hide().appendTo(slider.find('.ws_images'));
+	var logoShowTimer;
+	var toStart; // temporary save func for only one start
+	this.load = function(index, callback){
+		toStart = callback;
+		
+		// if loaded then quit
+		if (!preloadSlide(index, 
+				function(){
+					if (toStart==callback){
+						// hide logo
+						clearTimeout(logoShowTimer); 
+						logoShowTimer = 0;
+						logo.hide();
+						
+						callback();
+					}
+				}
+			)) return;
+			
+		if (!logoShowTimer)
+			logoShowTimer = setTimeout(function(){logo.show()}, 300);
+	}
+};
+

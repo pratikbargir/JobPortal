@@ -1,0 +1,325 @@
+// lines
+jQuery.extend(jQuery.easing,
+{
+	easeOutBack: function (x, t, b, c, d, s) {
+		if (s == undefined) s = 1.70158;
+		return c*((t=t/d-1)*t*((s+1)*t + s) + 1) + b;
+	},
+	easeOutBackCubic: function (x, t, b, c, d, s) {
+		var ts=(t/=d)*t;
+		return b+c*(-1.5*ts*t*ts + 2*ts*ts + 4*ts*t + -9*ts + 5.5*t);
+	},
+	easeOutCubic: function (x, t, b, c, d) {
+		return c*((t=t/d-1)*t*t + 1) + b;
+	},
+	easeOutExpo: function (x, t, b, c, d) {
+		return (t==d) ? b+c : c * (-Math.pow(2, -10 * t/d) + 1) + b;
+	}
+}); 
+function ws_lines(options, images, container){
+	var $ = jQuery;
+	var $this = $(this);
+	var noCanvas = options.noCanvas || !document.createElement("canvas").getContext;
+	var w = options.width, h = options.height;
+	var effectCont = $('<div>')
+		.css({
+			position: 'absolute',
+			top: 0,
+			left: 0,
+			width: '100%',
+			height: '100%',
+			overflow: 'hidden'
+		})
+		.addClass('ws_effect ws_lines').appendTo(container);
+
+	if(!noCanvas) {
+		var canvas = $('<canvas>').css({
+				position:'absolute',
+				left:0,
+				top:0,
+				width: '100%',
+				height: '100%'
+			}).appendTo(effectCont);
+		var ctx = canvas.get(0).getContext('2d');
+	}
+
+	// default line colors
+	// 0 - default color
+	// 1 - default x offset
+	// 2 - default y offset
+	var lineDefaults = [
+		['rgb(187,187,187)',  0.1,   0.3],
+		['rgb(179,179,179)',  0.9,   0.8],
+		['rgb(182,182,182)',  0.68,  0.4],
+		['rgb(185,185,185)',  0.25,  0.4],
+		['rgb(204,204,204)',  0.11,  0.7],
+		['rgb(195,195,195)',  0.18,  0.1],
+		['rgb(198,198,198)',  0.4,   0.2],
+		['rgb(201,201,201)',  0.55,  -0.04],
+		['rgb(211,211,211)',  0,     0.95],
+		['rgb(214,214,214)',  0.5,   0.8],
+		['rgb(217,217,217)',  0.9,   0.1]
+	];
+
+	// lines delays, effects, easings, rotations
+	var lines = [
+		// from center
+		[0.5, 0.4, 0.3, 0.2, 0.1, 0, 0.1, 0.2, 0.3, 0.4, 0.5],
+		// to center
+		[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.4, 0.3, 0.2, 0.1, 0],
+		// from left
+		[0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5],
+		// from right
+		[0.5, 0.45, 0.4, 0.35, 0.3, 0.25, 0.2, 0.15, 0.1, 0.05, 0],
+		// shuffle
+		[0.7, 0.3, 0, 0.1, 0.5, 0.3, 0.4, 0.1, 0.6, 0.2, 0],
+	];
+	var effects = ['from-top', 'from-bottom', 'width-from-center', 'height-from-center', 'fill-half-fill-full'];
+	var easings = ['easeOutExpo', 'easeOutCubic', 'easeOutBackCubic', 'easeOutBack'];
+	var rotations = [45, -45, 0, 180, 90, -90];
+
+	function clearCanvas(ctx) {
+		// I have lots of transforms right now
+		ctx.save();
+		ctx.setTransform(1, 0, 0, 1, 0, 0);
+		// Will always clear the right space
+		// ctx.clearRect(-w, -h, w*4, h*4);
+		ctx.clearRect(0, 0, w, h);
+		ctx.restore();
+		// Still have my old transforms
+	}
+
+    // prepare lines params and draw it on canvas
+    // @ctx      {{context}} - canvas context
+    // @a        {{double}}  - current state from 0 to 1
+    // @lines    {{object}}  - list of lines params
+    // @ease     {{string}}  - name of easing function
+    function drawLines(ctx, a, lines, fade, effectName, ease, rotate) {
+		// ctx.clearRect(-w, -h, w*4, h*4);
+		var width = w;
+		var height = h;
+		if(rotate == 45 || rotate == -45) {
+			width = height = Math.sqrt(w*w + h*h);
+		}
+		if(rotate == 90 || rotate == -90) {
+			width = h;
+			height = w;
+		}
+		var fixWDiagonal = (width-w)/2;
+		var fixHDiagonal = (height-h)/2;
+		// ctx.clearRect(0, 0, newSize, newSize);
+		// canvas.width = canvas.width;
+		clearCanvas(ctx);
+
+		for(var k = 0, len = lines.length; k < len; k++) {
+			// get current line params
+			var curDelay = lines[k] * ( 1 - a );
+			var progress = Math.max(0, Math.min(1, a - curDelay));
+
+			// draw current line
+			ctx.beginPath();
+
+			ctx.fillStyle = lineDefaults[k][0];
+			
+			// change rgb to rgba and make color transparency
+			if(fade) {
+				ctx.fillStyle = lineDefaults[k][0].replace(/rgb/g, 'rgba').replace(/\)/g, ',' + Math.min(a + 0.1, 1) + ')');
+			}
+
+			var result = { x: 0, y: 0, w: 0, h: 0 }
+			switch(effectName) {
+				case 'from-top':
+					if(ease && $.easing[ease])
+						progress = $.easing[ease](1, progress, 0, 1, 1, 1);
+
+					result.w = Math.ceil( 0.5 + width / len );
+					result.h = height;
+					result.x = ( len - k - 1 ) * width / len - fixWDiagonal;
+					result.y = - 1.5 * height * (1 - progress) - fixHDiagonal;
+					break;
+				case 'from-bottom':
+					if(ease && $.easing[ease])
+						progress = $.easing[ease](1, progress, 0, 1, 1, 1);
+
+					result.w = Math.ceil( 0.5 + width / len );
+					result.h = height;
+					result.x = ( len - k - 1 ) * width / len - fixWDiagonal;
+					result.y = 1.5 * height * (1 - progress) - fixHDiagonal;
+					break;
+				case 'width-from-center':
+					if(ease && $.easing[ease])
+						progress = $.easing[ease](1, progress, 0, 1, 1, 1);
+
+					result.w = Math.ceil( 0.5 + width / len ) * progress;
+					result.h = height;
+					result.x = ( len - k - 1 ) * width / len + (1-progress) * width / len / 2 - fixWDiagonal;
+					result.y = - fixHDiagonal;
+					break;
+				case 'height-from-center':
+					if(ease && $.easing[ease])
+						progress = $.easing[ease](1, progress, 0, 1, 1, 1);
+
+					result.w = Math.ceil( 0.5 + width / len );
+					result.h = height * progress;
+					result.x = ( len - k - 1 ) * width / len - fixWDiagonal;
+					result.y = (1-progress) * height / 2 - fixHDiagonal;
+					break;
+				case 'fill-half-fill-full':
+					if(progress < 0.5) {
+						if(ease && $.easing[ease])
+							progress = $.easing[ease](0.5, progress, 0, 0.5, 0.5, 0.5);
+					}
+
+					result.w = Math.ceil( 0.5 + width / len );
+					result.h = height * progress;
+					result.x = ( len - k - 1 ) * width / len - fixWDiagonal;
+					result.y = (1-progress) * height / 2 - fixHDiagonal;
+					break;
+			}
+
+			ctx.fillRect( result.x, result.y, result.w, result.h );
+		}
+    }
+
+	this.go = function(new_index, curIdx){
+		// if no canvas use fallback - slide
+		if(noCanvas) {
+			container.find('.ws_list').css('transform', 'translate3d(0,0,0)').stop(true).animate(
+				// opera do bug for "0%"
+				// safari (win?) do bug for 0
+				{left: (new_index?-new_index+"00%":(/Safari/.test(navigator.userAgent)?"0%":0))},
+				options.duration,
+				"easeInOutExpo",
+				function() {$this.trigger('effectEnd')}
+			);
+		}
+
+		// use canvas effect
+		else {
+			w = container.width();
+			h = container.height();
+			var startLines = lines[Math.floor(Math.random()*(lines.length))];
+			var endLines = lines[Math.floor(Math.random()*(lines.length))];
+
+			canvas.attr({width: w, height: h});
+
+			// use cur image when effect #0, else use next image
+			var img = images.get(curIdx);
+			// update lines colors
+			for(var k = 0, len = lineDefaults.length; k < len; k++) {
+				var curX = Math.abs(lineDefaults[k][1]),
+					curY = Math.abs(lineDefaults[k][2]);
+				
+				lineDefaults[k][0] = RGBaster(img, {
+					x: curX*w,
+					y: curY*h,
+					w: 2,
+					h: 2
+				}) || lineDefaults[k][0];
+			}
+
+			// start animation
+
+			// set random params
+			var curEffect = effects[Math.floor(Math.random()*(effects.length))];
+			var curEasing = easings[Math.floor(Math.random()*(easings.length))];
+			var curRotate = rotations[Math.floor(Math.random()*(rotations.length))];
+
+			// rotate canvas
+			ctx.translate(w / 2, h / 2);
+			ctx.rotate(curRotate * Math.PI / 180);
+			ctx.translate( -w / 2, -h / 2);
+
+			wowAnimate(function(a) {
+					drawLines(ctx, a, startLines, true, curEffect, curEasing, curRotate);
+				}, 0, 1,
+				options.duration/2,
+				function() {
+					container.find('.ws_list').css({
+						left: (new_index?-new_index+"00%":(/Safari/.test(navigator.userAgent)?"0%":0))
+					});
+
+					curEffect = effects[Math.floor(Math.random()*(effects.length))];
+					curEasing = easings[Math.floor(Math.random()*(easings.length))];
+					wowAnimate(function(a) {
+							drawLines(ctx, 1-a, endLines, false, curEffect, curEasing, curRotate);
+						}, 0, 1,
+						options.duration/2, options.duration*0.15,
+						function() {
+							clearCanvas(ctx);
+							$this.trigger('effectEnd');
+						}
+					);
+				}
+			);
+		}
+	}
+
+
+	// Get Dominant Color Function
+	// Include RGBaster - https://github.com/briangonzalez/rgbaster.js
+	// modifed - wowslider.com
+	function RGBaster(img, opts) {
+		opts = opts || {};
+		var BLOCKSIZE = 1,
+			exclude = opts.exclude || [ ], // for example, to exlude white and black:	[ '0,0,0', '255,255,255' ]
+			data;
+
+		var canvas = document.createElement("canvas"),
+			context = canvas.getContext('2d'),
+			width  = canvas.width  = img.naturalWidth,
+			height = canvas.height = img.naturalHeight;
+		context.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight);
+		
+		try {
+			data = context.getImageData(opts.x?opts.x:0, opts.y?opts.y:0, opts.w?opts.w:img.width, opts.h?opts.h:img.height)['data'];
+		} catch(e) {
+			/* wowslider.com changes
+
+			console.log("error:unable to access image data: " + e)
+			return '#ccc';
+			*/
+			return false;
+		}
+
+
+		var length = (opts.w?opts.w:img.width * opts.h?opts.h:img.height) || data.length,
+			colorCounts = {},
+			rgbString = '',
+			rgb = [],
+			colors = {
+				dominant: { name: '', count: 0 }
+			};
+
+		// Loop over all pixels, in BLOCKSIZE iterations.
+		var i = 0;
+		while ( i < length ) {
+			rgb[0] = data[i];
+			rgb[1] = data[i+1];
+			rgb[2] = data[i+2];
+			rgbString = rgb.join(",");
+
+			// Keep track of counts.
+			if ( rgbString in colorCounts ) {
+				colorCounts[rgbString] = colorCounts[rgbString] + 1;
+			}
+			else{
+				colorCounts[rgbString] = 1;
+			}
+
+			// Find dominant and palette, ignoring those colors in the exclude list.
+			if ( exclude.indexOf( ['rgb(', rgbString, ')'].join('') ) === -1 ) {
+				var colorCount = colorCounts[rgbString];
+				if ( colorCount > colors.dominant.count ){
+					colors.dominant.name = rgbString;
+					colors.dominant.count = colorCount;
+				}
+			}
+
+			// Increment!
+			i += BLOCKSIZE * 4;
+		}
+
+		return ['rgb(', colors.dominant.name, ')'].join('');
+	};
+}

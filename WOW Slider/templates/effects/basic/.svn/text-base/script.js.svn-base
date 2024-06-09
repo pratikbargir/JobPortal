@@ -1,0 +1,14 @@
+/* ws_basic */
+function ws_basic(options, images, container){
+	var $this = $(this);
+	this.go = function(index){
+		container.find('.ws_list').css('transform', 'translate3d(0,0,0)').stop(true).animate(
+			// opera do bug for "0%"
+			// safari (win?) do bug for 0
+			{left: (index?-index+"00%":(/Safari/.test(navigator.userAgent)?"0%":0))},
+			options.duration,
+			"easeInOutExpo",
+			function() {$this.trigger('effectEnd')}
+		);
+	}
+}

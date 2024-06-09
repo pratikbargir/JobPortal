@@ -1,0 +1,234 @@
+// ken burns 
+// options.paths=[{ from:[X,Y,Ratio], to:[X,Y,Ratio] },...] - transition description
+// 					from - begin state, to - end state
+// 					X,Y = 0..1 - relative position, 
+//					Ratio>1 - degree of stretching, 
+function ws_kenburns(options, images, container){
+	var $ = jQuery;
+	var $this = $(this);
+	var useCanvas = document.createElement("canvas").getContext;
+	var effectCont = $('<div>')
+		.css({
+			position: 'absolute',
+			top: 0,
+			left: 0,
+			width: '100%',
+			height: '100%',
+			overflow: 'hidden'
+		})
+		.addClass('ws_effect ws_kenburns').appendTo(container);
+	
+	var paths = options.paths || [
+		// [X,Y,Ratio]
+		// simple scale
+		{
+			from: [0, 0, 1],// 0 +
+			to:   [0, 0, 1.2]
+		}, {
+			from: [0, 0, 1.2],// 0 -
+			to:   [0, 0, 1]
+		}, {
+			from: [1, 0, 1],// 0 +
+			to:   [1, 0, 1.2]
+		}, {
+			from: [0, 1, 1.2],// 0 -
+			to:   [0, 1, 1]
+		}, {
+			from: [1, 1, 1],// 0 +
+			to:   [1, 1, 1.2]
+		/*// simple move
+		}, {
+			from: [0, 0, 1.2],// x 0
+			to:   [1, 0, 1.2] 
+		}, {
+			from: [0, 1, 1.2],// x 0
+			to:   [1, 1, 1.2]
+		}, {
+			from: [1, 0, 1.2],// y 0
+			to:   [1, 1, 1.2]
+		}, {
+			from: [0, 0, 1.2],// y 0
+			to:   [0, 1, 1.2]
+		}, {
+			from: [1, 0, 1.2],// xy 0
+			to:   [0, 1, 1.2]
+			*/
+		// --- for canvas only ---
+		// centered scale
+		}, {
+			from: [0.5, 1, 1.0],// 0 +
+			to:   [0.5, 1, 1.3]
+		}, {
+			from: [1, 0.5, 1.2],// 0 -
+			to:   [1, 0.5, 1]
+		}, {
+			from: [1, 0.5, 1.0],// 0 +
+			to:   [1, 0.5, 1.2]
+		}, {
+			from: [0, 0.5, 1.2],// 0 -
+			to:   [0, 0.5, 1.0]
+		}, {
+			from: [1, 0.5, 1.2],// 0 -
+			to:   [1, 0.5, 1.0]
+		}, {
+			from: [0.5, 0.5, 1.0],// 0 +
+			to:   [0.5, 0.5, 1.2]
+		}, {
+			from: [0.5, 0.5, 1.3],// 0 -
+			to:   [0.5, 0.5, 1.0]
+		// centered move with scale
+		}, {
+			from: [0.5, 1, 1],	// y +
+			to:   [0.5, 0, 1.15]
+		}
+	];
+	
+	function getPath(ind){
+		return paths[
+			ind	?
+				Math.floor(Math.random()*(useCanvas? paths.length: Math.min(5,paths.length))): 
+				0
+		]; // for old browsers first 5
+	}
+	
+	var w = options.width, h=options.height;
+	
+	// init first cavas
+	var proc,proc2; // current process and prev
+	var cont,cont2;
+	// init cont
+	function newCont(){
+		cont = $('<div style="width:100%;height:100%"></div>')
+			.css({
+				'z-index':8,
+				position:'absolute',
+				left:0,
+				top:0
+			})
+			.appendTo(effectCont);
+	}
+	newCont();
+	
+	
+	function calcPos(path,hProp,vProp){
+		var an = {
+			width: 100*path[2]+'%'
+		};
+		an[hProp? 'right': 'left'] = -100*(path[2]-1)*(hProp?(1-path[0]):path[0])+'%';
+		an[vProp? 'bottom': 'top'] = -100*(path[2]-1)*(vProp?(1-path[1]):path[1])+'%';
+		
+		// fix animation problem for only IE7+jquery1.8+ - size in % is wrong animation
+		if (!useCanvas)
+			for (var p in an)
+				if (/\%/.test(an[p]))
+					an[p] = (/right|left|width/.test(p)?w:h) * parseFloat(an[p])/100 + 'px';
+		return an;
+	}
+
+	
+	function setAnimate(img,path,needFade){
+		var imgParams = $(img);
+			imgParams = {
+				width: imgParams.width(),
+				height: imgParams.height(),
+				marginTop: imgParams.css('marginTop'),
+				marginLeft: imgParams.css('marginLeft')
+			};
+		
+		// delete very old context and change last to old
+		if (useCanvas){
+			if (proc2) proc2.stop(1);
+			proc2 = proc;
+		}
+		
+		if (cont2) cont2.remove();
+		cont2 = cont;
+		newCont();// init cont
+	
+		if (needFade) { 
+			cont.hide(); 
+			cont2.stop(true,true); 
+		};
+		
+		if (useCanvas){
+			
+			var ctx,ctx2; // canvas context, ctx2-for cashing
+			var canvas,canvas2;
+			
+			// create canvas 
+			canvas = $('<canvas width="'+w+'" height="'+h+'"/>');
+			canvas.css({
+				position:'absolute',
+				left:0,
+				top:0
+			}).css(imgParams).appendTo(cont);
+			ctx = canvas.get(0).getContext('2d');
+			canvas2 = canvas.clone().appendTo(cont);
+			ctx2 = canvas2.get(0).getContext('2d');
+			
+			proc = wowAnimate(
+				function(a){
+					var p = [
+						path.from[0]*(1-a)+a*path.to[0],// dx
+						path.from[1]*(1-a)+a*path.to[1],// dy
+						path.from[2]*(1-a)+a*path.to[2] // e
+					];
+	
+					ctx2.drawImage(img,
+						- w * (p[2] - 1) * p[0],
+						- h * (p[2] - 1) * p[1],
+						w * p[2],
+						h * p[2]
+					);
+					
+					// code below need for need for png support
+					ctx.clearRect(0, 0, w, h); // clear old, here for save memory
+					// exchange current context
+					var bkp = ctx; ctx = ctx2; ctx2 = bkp;
+				}, 0, 1,
+				options.duration + options.delay*2
+			);
+			
+		}
+		else {
+			w = imgParams.width;
+			h=imgParams.height;
+
+			// init canvas
+			var workImg = $('<img src="'+img.src+'"/>').css({
+				position:'absolute',
+				left: 'auto',
+				right: 'auto',
+				top: 'auto',
+				bottom: 'auto'
+			}).appendTo(cont)
+			
+			// begin position
+			.css(calcPos(path.from, 	path.from[0]>0.5, path.from[1]>0.5))
+			
+			// start animation
+			.animate(
+				calcPos(path.to, 	path.from[0]>0.5, path.from[1]>0.5),
+				{easing:"linear",queue:false, duration: (1.5*options.duration + options.delay)}
+			);
+		}
+
+		if (needFade) cont.fadeIn(options.duration);
+	}
+
+	// initialization when using only one effect - kenburns
+	if(options.effect.length == 1)
+	$(function(){
+		images.each(function(Index){	
+			$(this).css({visibility:'hidden'}); // hide all image for prevent show while image switch
+			
+			if (Index==options.startSlide) // start animate startSlide
+				setAnimate(this,getPath(Index),0);
+		});
+	});
+
+	this.go = function(new_index, curIdx){
+		setTimeout(function(){$this.trigger('effectEnd');},options.duration);
+		setAnimate(images.get(new_index), getPath(new_index), 1);
+	}
+}

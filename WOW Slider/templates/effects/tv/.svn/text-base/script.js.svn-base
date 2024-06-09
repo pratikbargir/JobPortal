@@ -1,0 +1,118 @@
+// TV
+jQuery.extend( jQuery.easing, {
+  easeOutBack2: function(x, t, b, c, d) {
+    var ts=(t/=d)*t;
+    var tc=ts*t;
+    return b+c*(5*tc*ts + -15*ts*ts + 19*tc + -14*ts + 6*t);
+  },
+  easeOutCubic: function (x, t, b, c, d) {
+    return c*((t=t/d-1)*t*t + 1) + b;
+  },
+  easeInCubic: function (x, t, b, c, d) {
+    return c*(t/=d)*t*t + b;
+  }
+});
+function ws_tv(options, images, container){
+  var $ = jQuery;
+  var $this = $(this);
+  var noCanvas = options.noCanvas || !document.createElement("canvas").getContext;
+  var w = options.width, h = options.height;
+  var effectCont = $('<div>')
+    .css({
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      width: '100%',
+      height: '100%',
+      overflow: 'hidden'
+    })
+    .addClass('ws_effect ws_tv').appendTo(container);
+
+  if(!noCanvas) {
+    var canvas = $('<canvas>').css({
+        position:'absolute',
+        left:0,
+        top:0,
+        width: '100%',
+        height: '100%'
+      }).appendTo(effectCont);
+    var ctx = canvas.get(0).getContext('2d');
+  }
+
+  function fromTo(a, b, c) {
+    return a + (b - a) * c;
+  }
+
+  this.go = function(new_index, curIdx){
+    // if no canvas use fallback - slide
+    if(noCanvas) {
+      container.find('.ws_list').css('transform', 'translate3d(0,0,0)').stop(true).animate(
+        // opera do bug for "0%"
+        // safari (win?) do bug for 0
+        {left: (new_index?-new_index+"00%":(/Safari/.test(navigator.userAgent)?"0%":0))},
+        options.duration,
+        "easeInOutExpo",
+        function() {$this.trigger('effectEnd')}
+      );
+    }
+
+    // use canvas effect
+    else {
+      w = container.width();
+      h = container.height();
+
+      canvas.attr({width: w, height: h});
+
+      // use cur image when effect #0, else use next image
+      var img = $(images.get(new_index)).clone().css({
+        opacity: 0,
+        zIndex: 2,
+        maxHeight: 'none'
+      }).appendTo(effectCont)
+
+      // start tv
+      wowAnimate(function(a) {
+          ctx.clearRect(0, 0, w, h);
+
+          // line width. When a >= 0.95 - draw from line to point in center screen
+          var widthLine = w;
+          if(a >= 0.95) {
+            widthLine *= 1 - (a - 0.95) / (1 - 0.95);
+          }
+
+          // black back
+          ctx.fillStyle = '#111';
+          ctx.fillRect( 0, 0, w, h );
+
+          // white line
+          var whiteLine = ctx.createLinearGradient(0, a * h / 2, 0, h - a * h / 2);
+            whiteLine.addColorStop(0,"#111");
+            whiteLine.addColorStop(fromTo(0, 0.5, a),"#fff");
+            whiteLine.addColorStop(0.5,"#fff");
+            whiteLine.addColorStop(fromTo(1, 0.5, a),"#fff");
+            whiteLine.addColorStop(1,"#111");
+          ctx.fillStyle = whiteLine;
+          ctx.fillRect((w - widthLine) / 2, a * h / 2, widthLine, h * (1 - a));
+        },
+        0, 1, options.duration * 0.3, 'easeOutCubic', function() {
+          // show new image
+          wowAnimate(img,
+            {scale: [0.9, 0], opacity: 0.5},
+            {scale: [1, 1], opacity: 1},
+            options.duration * 0.3, options.duration * 0.4, 'easeOutBack2', function() {
+              container.find('.ws_list').css({
+                left: (new_index?-new_index+"00%":(/Safari/.test(navigator.userAgent)?"0%":0))
+              });
+              $this.trigger('effectEnd');
+              setTimeout(function() {
+                ctx.fillStyle = '#111'; // fix chrome 42.0.2311.90m issue (clear rect no working without this line :O)
+                ctx.clearRect( 0, 0, w, h );
+                img.remove();
+              }, 1);
+            }
+          );
+        }
+      );
+    }
+  }
+}

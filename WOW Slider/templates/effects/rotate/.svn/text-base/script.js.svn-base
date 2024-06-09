@@ -1,0 +1,69 @@
+// rotate
+// options.rotateIn = ..-360..360.. - direction and angle of rotate for new image, default +180 
+// options.scaleIn >0 - scale for new image, default 10
+// options.noCross - Do not rotate prev image
+// options.rotateOut= ..-360..360.. - direction and angle of rotate for prev image, default +180 
+// options.scaleOut >0 - scale for new image, default 10
+function ws_rotate(options, images, container){
+	var $ = jQuery;
+	var $this = $(this);
+	var ul = $('.ws_list', container);
+	var fullContCSS = {
+		position:'absolute',
+		left:0,
+		top:0
+	};
+	var effectCont = $('<div>').addClass('ws_effect ws_rotate').css(fullContCSS).css({
+		height: '100%',
+		width:'100%',
+		overflow: 'hidden'
+	}).appendTo(container);
+	var newImg;
+
+	this.go = function(new_index, curIdx){
+		var imgParams = $(images[0]);
+			imgParams = {
+				width: imgParams.width(),
+				height: imgParams.height(),
+				marginTop: parseFloat(imgParams.css('marginTop')),
+				marginLeft: parseFloat(imgParams.css('marginLeft')),
+				maxHeight: 'none',
+				maxWidth: 'none',
+			};
+		if (newImg) newImg.stop(true,true);
+		newImg = $(images.get(new_index)).clone().css(fullContCSS).css(imgParams).appendTo(effectCont);
+		
+		// hide current
+		if (!options.noCross){
+			var curImg = $(images.get(curIdx)).clone().css(fullContCSS).css(imgParams).appendTo(effectCont);
+			
+			// animate old
+			wowAnimate(curImg,
+				{ opacity: 1, rotate: 0, scale: 1 },
+				{ 
+					opacity: 0,
+					rotate: options.rotateOut || 180,
+					scale: options.scaleOut || 10
+				},
+				options.duration, 'easeInOutExpo',
+				function() { curImg.remove(); }
+			);
+		}
+		
+		// animate new
+		wowAnimate(newImg,
+			{
+				opacity: 1,
+				rotate: -(options.rotateIn || 180),
+				scale: options.scaleIn || 10
+			},
+			{ opacity: 1, rotate: 0, scale: 1 },
+			options.duration, 'easeInOutExpo',
+			function() {
+				newImg.remove();
+				newImg=0;
+				$this.trigger('effectEnd');
+			}
+		);
+	}
+}

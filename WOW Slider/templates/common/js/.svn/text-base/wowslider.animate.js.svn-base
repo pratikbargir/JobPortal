@@ -1,0 +1,360 @@
+
+/*
+	WOW Slider Animation core
+  Options:
+  each/obj, from, to, duration [, delay, ease, callback]
+  
+  Available CSS properties:
+    opacity: 1,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: 0,
+    height: 0,
+    translate: [ 0, 0, 0 ],
+    rotate: 0,
+    rotateX: 0,
+    rotateY: 0,
+    scale: 1 / [1, 1]
+
+
+  return function stop( step );
+  to force stop animation call -> stop(1);
+  
+  
+  Examples of usage:
+  ------------ NUMBERS ------------
+  wowAnimate(function(a) {
+      console.log(a);
+    }, 2, 125,
+    1000, 100, 'easeInOutBack',
+    function() {
+      console.log('finish');
+    }
+  );
+
+  Same:
+  wowAnimate({
+    each: function(a) {
+      console.log(a);
+    },
+    from: 2,
+    to: 125,
+    duration: 1000,
+    delay: 100,
+    easing: 'easeInOutBack',
+    callback: function() {
+      console.log('finish');
+    }
+  }
+
+
+  ------------ CSS ------------
+  wowAnimate(jQuery('.someClass'), {
+      opacity: 0,
+      top: -10
+    }, {
+      opacity: 1,
+      top: '50%'
+    }, 1000, 1000, 'easeInOutBack',
+    function() {
+      console.log('finish');
+    }
+  );
+
+  Same:
+  wowAnimate({
+    obj: jQuery('.someClass'),
+    from: {
+      opacity: 0,
+      top: -10
+    },
+    to: {
+      opacity: 1,
+      top: '50%'
+    },
+    duration: 1000,
+    delay: 1000,
+    easing: 'easeInOutBack',
+    callback: function() {
+      console.log('finish');
+    }
+  });
+
+*/
+;(function($) {
+
+function wowAnimate( each, from, to, duration, delay, easing, callback ) {
+  if( typeof each === 'undefined' ) {
+    return;
+  }
+
+  // when each == {}
+  if( !each.jquery && typeof each !== 'function' ) {
+    from = each.from;
+    to = each.to;
+    duration = each.duration;
+    delay = each.delay;
+    easing = each.easing;
+    callback = each.callback;
+    each = each.each || each.obj;
+  }
+
+  // check type of call function
+  var type = 'num'; // num, obj
+  if( each.jquery ) {
+    type = 'obj';
+  }
+
+  if( typeof each === 'undefined' ||
+    typeof from === 'undefined' ||
+    typeof to === 'undefined' ) {
+    return;
+  }
+
+  if( typeof delay === 'function' ) {
+    callback = delay;
+    delay = 0;
+  }
+  if( typeof easing === 'function' ) {
+    callback = easing;
+    easing = 0;
+  }
+  if( typeof delay === 'string' ) {
+    easing = delay;
+    delay = 0;
+  }
+
+  // set default values
+  duration = duration || 0;
+  delay = delay || 0;
+  easing = easing || 0;
+  callback = callback || 0;
+  
+  // start raf animation
+  function startAnimate( func ) {
+    var start = new Date().getTime() + delay;
+    var step = function() {
+      var curTime = new Date().getTime() - start;
+
+      // waiting for delay
+      /*
+      if( curTime < 0 ) {
+        requestAnimationFrame( step );
+        return;
+      }
+      */
+      if( curTime < 0 ) {
+        curTime = 0;
+      }
+
+      var progress = duration ? ( curTime / duration ) : 1;
+
+      if ( progress < 1 ) {
+        func( progress );
+        requestAnimationFrame( step );
+      }
+      else {
+        stop(1);
+      }
+    }
+    step();
+
+    // stop animation
+    function stop(step) {
+      cancelAnimationFrame( step );
+      // go to end values
+      func( 1 );
+      if ( callback ) callback();
+    }
+    return {stop: stop}
+  }
+
+  // calc current value
+  // from - start value
+  // to - end value
+  // a - step [0, 1]
+  function calc( from, to, a ) {
+    return from + ( to - from ) * a;
+  }
+
+  // ease current value
+  // easeValue(0.4, 'easeInBack')
+  // return new value
+  function easeValue( a, easing ) {
+    if( easing == 'linear' ) {
+      return a;
+    }
+    if( easing == 'swing' ) {
+      return $.easing[ easing ] ? $.easing[ easing ](a) : a;
+    }
+    return $.easing[ easing ] ? $.easing[ easing ](1, a, 0, 1, 1, 1) : a;
+  }
+
+  // default css properties list with units
+  var CSSprops = {
+    opacity: 0,
+    top: 'px',
+    left: 'px',
+    right: 'px',
+    bottom: 'px',
+    width: 'px',
+    height: 'px',
+    translate: 'px',
+    rotate: 'deg',
+    rotateX: 'deg',
+    rotateY: 'deg',
+    scale: 0
+  };
+
+  // parse css values
+  // prop - name of css propertie form CSSprops list
+  // from - property value 'from' state
+  // to - property value 'to' state
+  // a - progress [0, 1]
+  function parseValues(prop, from, to, a) {
+    // if object, go to recursion :)
+    if(typeof from === 'object') {
+      var result = {};
+      for(var k in from) {
+        result[k] = parseValues(prop, from[k], to[k], a);
+      }
+      return result;
+    }
+
+    // when string or number
+    else {
+      // units list
+      var units = ["px", "%", "in", "cm", "mm", "pt", "pc", "em", "ex", "ch", "rem", "vh", "vw", "vmin", "vmax", "deg", "rad", "grad", "turn"];
+      
+      var unit = '';
+      if(typeof from === 'string') {
+        // set unit from 'from'
+        unit = from;
+      } else if(typeof to === 'string') {
+        // set unit from 'to'
+        unit = to;
+      }
+
+      // check if has unit
+      unit = (function(unit, units, prop) {
+        for(var k in units) {
+          if(unit.indexOf(units[k]) > -1) {
+            return units[k];
+          }
+        }
+        if(CSSprops[prop]) {
+          // set default unit
+          return CSSprops[prop];
+        }
+        return '';
+      }(unit, units, prop));
+
+      // parse to float
+      from = parseFloat(from);
+      to = parseFloat(to);
+
+      // calculate
+      return calc( from, to, a ) + unit;
+    }
+  }
+
+  // start calculating values
+  var animationStart = startAnimate(function( a ) {
+    a = easeValue( a, easing );
+
+    // when number animation
+    if(type === 'num') {
+      var result = calc( from, to, a );
+      each( result );
+    }
+
+    // when CSS animation
+    else {
+      var result = {
+        transform: ''
+      };
+      // prepare all props
+      for(var k in from) {
+        // if supported prop
+        if(typeof CSSprops[k] !== 'undefined') {
+          var value = parseValues(k, from[k], to[k], a);
+
+          switch(k) {
+            case 'translate':
+              result['transform'] += ' translate3d(' + value[0] + ',' + value[1] + ',' + value[2] + ')';
+              break;
+            case 'rotate':
+              result['transform'] += ' rotate(' + value + ')';
+              break;
+            case 'rotateX':
+              result['transform'] += ' rotateX(' + value + ')';
+              break;
+            case 'rotateY':
+              result['transform'] += ' rotateY(' + value + ')';
+              break;
+            case 'scale':
+              if(typeof value === 'object') {
+                result['transform'] += ' scale(' + value[0] + ', ' + value[1] + ')';
+              } else {
+                result['transform'] += ' scale(' + value + ')';
+              }
+              break;
+            default:
+              result[k] = value;
+          }
+        }
+      }
+
+      // apply css
+      if(result.transform === '') {
+        delete result.transform;
+      }
+      each.css(result)
+    }
+  });
+
+  return animationStart;
+}
+
+window.wowAnimate = wowAnimate;
+
+}(jQuery));
+
+
+
+// Adapted from https://gist.github.com/paulirish/1579671 which derived from 
+// http://paulirish.com/2011/requestanimationframe-for-smart-animating/
+// http://my.opera.com/emoller/blog/2011/12/20/requestanimationframe-for-smart-er-animating
+
+// requestAnimationFrame polyfill by Erik Möller.
+// Fixes from Paul Irish, Tino Zijdel, Andrew Mao, Klemen Slavič, Darius Bacon
+
+// MIT license
+
+if (!Date.now)
+    Date.now = function() { return new Date().getTime(); };
+
+(function() {
+    'use strict';
+    
+    var vendors = ['webkit', 'moz'];
+    for (var i = 0; i < vendors.length && !window.requestAnimationFrame; ++i) {
+        var vp = vendors[i];
+        window.requestAnimationFrame = window[vp+'RequestAnimationFrame'];
+        window.cancelAnimationFrame = (window[vp+'CancelAnimationFrame']
+                                   || window[vp+'CancelRequestAnimationFrame']);
+    }
+    if (/iP(ad|hone|od).*OS 6/.test(window.navigator.userAgent) // iOS6 is buggy
+        || !window.requestAnimationFrame || !window.cancelAnimationFrame) {
+        var lastTime = 0;
+        window.requestAnimationFrame = function(callback) {
+            var now = Date.now();
+            var nextTime = Math.max(lastTime + 16, now);
+            return setTimeout(function() { callback(lastTime = nextTime); },
+                              nextTime - now);
+        };
+        window.cancelAnimationFrame = clearTimeout;
+    }
+}());

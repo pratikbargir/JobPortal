@@ -1,0 +1,88 @@
+// shift 
+// options.direction - left,right,down,up
+jQuery.extend( jQuery.easing, {
+    easeInOutCubic: function (x, t, b, c, d) {
+        if ((t/=d/2) < 1) return c/2*t*t*t + b;
+        return c/2*((t-=2)*t*t + 2) + b;
+    }
+})
+function ws_shift(options,images,container){
+    var $ = jQuery;
+    var $this = $(this);
+    var elems = container.find('li');
+    var ul = container.find('.ws_list');
+
+    var defaultCSS = {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        overflow: 'hidden'
+    };
+    var effectCont = $('<div>').addClass('ws_effect ws_shift').css(defaultCSS).appendTo(container);
+
+    // create effect images
+    var hiImg = $('<div>')
+            .css(defaultCSS).css({display:'none', zIndex:4})
+            .appendTo(effectCont);
+    var backImg = $('<div>')
+            .css(defaultCSS).css({display:'none', zIndex:3})
+            .appendTo(effectCont);
+
+    this.go = function(new_index,curIdx,dir){
+        var w = container.width();
+        var h = container.height();
+
+        // add images to effect cont
+        hiImg.append($(images.get(new_index)).clone());
+        backImg.append($(images.get(curIdx)).clone());
+
+        if(options.responsive < 3) {
+            hiImg.find('img').css('width', '100%');
+            backImg.find('img').css('width', '100%');
+        }
+        
+        // hide back images
+        ul.stop(true,true).hide().css({left:-new_index+"00%"});
+
+        // get direction and set styles
+        var params = {
+            left:  [{ left: -w },{ left: 0 }],
+            right: [{ left: w },{ left: 0 }],
+            down:  [{ top: h },{ top: 0 }],
+            up:    [{ top: -h },{ top: 0 }]
+        }
+        [ options.direction || ['left','right','down','up'][Math.floor(Math.random()*4)] ];
+
+        // transforms support
+        if(options.support.transform) {
+            if(params[0].left) {
+                params[0] = { translate: [params[0].left, 0, 0] }
+            } else {
+                params[0] = { translate: [0, params[0].top, 0] }
+            }
+            params[1] = { translate: [0, 0, 0] };
+        }
+
+        // show effect images
+        hiImg.show();
+        backImg.show();
+        
+        // start animation
+        wowAnimate(hiImg,
+            params[0], params[1], options.duration, 'easeInOutCubic',
+            function() {
+                ul.show();
+                hiImg.hide().html('');
+                backImg.hide().html('');
+                $this.trigger('effectEnd');
+            }
+        );
+        wowAnimate(backImg,
+            { scale: 1, translate: [0, 0, 0] },
+            { scale: 0.5, translate: [0, 0, 0] },
+            options.duration, 'easeInOutCubic'
+        );
+    }
+};

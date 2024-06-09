@@ -1,0 +1,71 @@
+// ws_caption_move
+;(function() {
+	var captionTimeout;
+	window.ws_caption_move = function(options, caption, prevCaption, title) {
+		var $ = jQuery;
+		var direction = [ // predefines for move effect
+				{left1:"100%",top2:"100%"}, // from right bottom %
+				{left1:"80%",left2:"-50%"}, // from left right %
+				{top1:"-100%",top2:"100%",distance:0.7,easing:"easeOutBack"}, // from top bottom %
+				{top1:"-80%",top2:"-80%",distance:0.3,easing:"easeOutBack"}, // from top %
+				{top1:'-80%',left2:'80%'}, // from top right %
+				{left1:"80%",left2:"80%"} // from right %
+			];
+			direction = direction[Math.floor(Math.random() * direction.length)];
+		var distance = 0.5;
+		var easing = "easeOutElastic1";
+
+
+		var waiting = options.noDelay?0:(options.duration / 2 - options.captionDuration / 3);
+		if(waiting < 0) {
+			waiting = 0;
+		}
+
+		// hide old title
+		caption.stop(1,1).delay(waiting).fadeOut(options.captionDuration/3);
+
+		// show new title
+		if(title) {
+			if(captionTimeout) {
+				clearTimeout(captionTimeout);
+			}
+			captionTimeout = setTimeout(function() {
+				caption.stop(1,1).html(title);
+
+				var els = caption.find('>span,>div').get();
+
+				// start state
+				$(els).css({position:'relative',visibility:"hidden"});
+				caption.show();
+
+				// start position
+				for (var p in direction)
+					if (/\%/.test(direction[p])){ // persent position
+						direction[p] = parseInt(direction[p])/100;
+						var pos = caption.offset()[/left/.test(p)?'left':'top'];
+						var size = /left/.test(p)?'width':'height';
+						if (direction[p]<0)
+							direction[p] *= pos
+						else
+							direction[p] *= options.$this[size]() - caption[size]() - pos;
+					}
+
+
+				$(els[0]).css({left:(direction.left1||0)+'px', top:(direction.top1||0)+'px'});
+				$(els[1]).css({left:(direction.left2||0)+'px', top:(direction.top2||0)+'px'});
+
+				// animate
+				function startAnimation(i){
+					//linear easeOutCubic easeInCubic easeOutBack
+					var op = $(els[i]).css('opacity'); // backup opacity
+					$(els[i]).css({visibility:'visible'})
+							 .css({opacity:0})// set opacity after visible because of bug in ie8
+							 .animate({opacity:op},options.captionDuration,"easeOutCirc")
+							 .animate({top:0,left:0},{duration:options.captionDuration,easing:(direction.easing || easing),queue:false});
+				}
+				startAnimation(0);
+				setTimeout(function(){ startAnimation(1) },options.captionDuration*(direction.distance || distance));
+			}, options.noDelay?0:(options.duration / 2 + waiting));
+		}
+	}
+}());

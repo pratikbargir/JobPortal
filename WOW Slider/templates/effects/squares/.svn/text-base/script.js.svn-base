@@ -1,0 +1,48 @@
+// squares
+// options.fadeOut - fadeOut old image
+// options.type = random | swirl | rain | straight | snakeV | rainV
+function ws_squares(options, images, container){
+	var $ = jQuery;
+	var $this = $(this);
+
+	// init
+	var ul = container.find('ul').get(0);
+	ul.id='wowslider_tmp'+ Math.round(Math.random()*99999); // coinslider work only if id present
+	var effectCnt = 0;
+	
+	$(ul).coinslider({ hoverPause: false, startSlide: options.startSlide, navigation:0, delay: -1, effect: options.type,
+		width: options.width, height: options.height,
+		//sDelay: 30, // delay beetwen squares in ms
+		//spw: 7, // squares per width
+		//sph: 5, // squares per height
+		sDelay: options.duration/(7*5)
+	});
+	
+	var coinCont = $("#coin-slider-"+ul.id).addClass('ws_effect ws_squares').css({
+		position:'absolute',
+		display: 'none',
+		left:0,
+		top:0,
+		"z-index":8,
+		transform: 'translate3d(0,0,0)'
+	});
+
+	// switch image to
+	var curIndex = options.startSlide;
+	$(ul).bind("cs:animFinished",function(){
+		$this.trigger('effectEnd');
+		if (effectCnt<2){
+			effectCnt=0;
+			coinCont.hide();
+		}
+	});
+
+	this.go = function(index){
+		effectCnt++;
+		coinCont.show();
+		curIndex = index;
+		$.transition(ul, index);
+		coinCont.css('background','none');
+		if (options.fadeOut) $(ul).fadeOut(options.duration);
+	}
+}

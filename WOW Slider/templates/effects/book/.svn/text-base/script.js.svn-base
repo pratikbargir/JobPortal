@@ -1,0 +1,434 @@
+// ws_book
+function ws_book(options, images, container) {
+    var $ = jQuery;
+	var $this = $(this);
+    var ul = $('.ws_list', container);
+	var effectCont = $('<div>').addClass('ws_effect ws_book').css({
+			position: 'absolute',
+			top: 0,
+			left: 0,
+			width: '100%',
+			height: '100%'
+		}).appendTo(container),
+		duration = options.duration,
+		perspective = options.perspective || 0.4, // 0 - min, 1 - max
+		shadow_intensity = options.shadow || 0.35, // 0 - min, 1 - max
+		use2d = options.noCanvas || false,
+		use3d = options.no3d || false;
+
+	// Obj to check browser capabilities
+    var testBrowser = {
+        // Browser vendor DOM prefixes
+        //domPrefixes: ['', 'Webkit', 'Moz', 'ms', 'O', 'Khtml']
+        domPrefixes: ' Webkit Moz ms O Khtml'.split(' ')
+
+        // Method to iterate over a property (using all DOM prefixes)
+        // Returns true if prop is recognised by browser (else returns false)
+        , testDom: function (prop) {
+            var i = this.domPrefixes.length;
+
+            while (i--) {
+                if (typeof document.body.style[this.domPrefixes[i] + prop] !== 'undefined') {
+                    return true;
+                }
+            }
+
+            return false;
+        }, cssTransitions: function () {
+            // Use testDom method to check prop (returns bool)
+            return this.testDom('Transition');
+        }, cssTransforms3d: function () {
+			// Check for vendor-less prop
+			var ret = (typeof document.body.style['perspectiveProperty'] !== 'undefined') 
+            // Use testDom method to check prop (returns bool)
+					|| this.testDom('Perspective');
+			
+
+			// webkit has 3d transforms disabled for chrome, though
+			//   it works fine in safari on leopard and snow leopard
+			// as a result, it 'recognizes' the syntax and throws a false positive
+			// thus we must do a more thorough check:
+			if (ret && /AppleWebKit/.test(navigator.userAgent)) {
+				var div = document.createElement('div'),
+					st = document.createElement('style'),
+					id = 'Test3d'+Math.round(Math.random()*99999);
+				// webkit allows this media query to succeed only if the feature is enabled.    
+				// "@media (transform-3d),(-o-transform-3d),(-moz-transform-3d),(-ms-transform-3d),(-webkit-transform-3d),(modernizr){#modernizr{height:3px}}"
+				st.textContent = '@media (-webkit-transform-3d){#'+id+'{height:3px}}';
+				document.getElementsByTagName('head')[0].appendChild(st);
+				div.id = id;
+				document.body.appendChild(div);
+				
+				ret = div.offsetHeight === 3;
+				
+				st.parentNode.removeChild(st);
+				div.parentNode.removeChild(div);
+			}
+			return ret;
+			
+        },
+		canvas: function(){
+			if (typeof document.createElement('canvas').getContext !== 'undefined'){
+				return true;
+			}
+		}
+    };
+	if(!use3d)
+		use3d = testBrowser.cssTransitions() && testBrowser.cssTransforms3d();
+	if(!use2d)
+		use2d = testBrowser.canvas();
+		
+    var thread;
+    this.go = function (new_index, cur_index, direction) {
+		if(thread) return -1; // Preventing interrupt animation
+		var new_img = images.get(new_index),
+            cur_img = images.get(cur_index);
+
+        if(direction == undefined)
+        	direction = (cur_index == 0 && new_index != cur_index + 1) || (new_index == cur_index - 1);
+        else direction = !direction;
+
+		var cont = $("<div>").appendTo(effectCont);
+		var imgParams = $(new_img);
+			imgParams = {
+				width: imgParams.width(),
+				height: imgParams.height(),
+				marginLeft: parseFloat(imgParams.css('marginLeft')),
+				marginTop: parseFloat(imgParams.css('marginTop'))
+			};
+		
+		// initialization
+        if (use3d) {
+			var default_css = {
+				background: '#000',
+				position: 'absolute',
+				left: 0,
+				top: 0,
+				width: '100%',
+				height: '100%',
+				transformStyle: 'preserve-3d',
+				zIndex: 3,
+				outline: '1px solid transparent'
+			};
+			
+			perspect = container.width()*(3-perspective*2);
+
+			cont.css(default_css).css({
+				perspective: perspect,
+				transform: 'translate3d(0,0,0)'
+			});
+
+			// the maximum angle at which turn sheet
+			var deg = 90; 
+				
+            // Left container
+            var cont1 = $("<div>").css(default_css).css({
+            	position: 'relative',
+                'float': 'left',
+                width: '50%',
+                overflow: 'hidden'
+            })
+            .append(
+            	$('<img>').attr('src', (direction?new_img:cur_img).src)
+            	.css(imgParams)
+        	)
+			.appendTo(cont);
+
+            // Right container
+            var cont2 = $("<div>").css(default_css).css({
+            	position: 'relative',
+                'float': 'left',
+                width: '50%',
+                overflow: 'hidden'
+            })
+            .append(
+            	$('<img>').attr('src', (direction?cur_img:new_img).src)
+            	.css(imgParams).css({
+            		marginLeft: -imgParams.width/2
+            	})
+        	)
+            .appendTo(cont);
+
+            // Block inside the cont1
+            var item1 = $("<div>").css(default_css).css({
+                display: direction ? 'block' : 'none',
+                width: '50%',
+                transform: 'rotateY(' + (direction?0.1:deg) + 'deg)',
+                transition: (direction?'ease-in ':'ease-out ') + duration / 2000 + 's',
+                transformOrigin: 'right',
+                overflow: 'hidden'
+            })
+            .append(
+            	$('<img>').attr('src', (direction?cur_img:new_img).src)
+            	.css(imgParams)
+        	)
+            .appendTo(cont);
+
+            // Block inside the cont2
+            var item2 = $("<div>").css(default_css).css({
+                display: direction ? 'none' : 'block',
+            	left: '50%',
+            	width: '50%',
+                transform: 'rotateY(-' + (direction?deg:0.1) + 'deg)',
+                transition: (direction?'ease-out ':'ease-in ') + duration / 2000 + 's',
+                transformOrigin: 'left',
+                overflow: 'hidden'
+            })
+            .append(
+            	$('<img>').attr('src', (direction?new_img:cur_img).src)
+            	.css(imgParams).css({
+            		marginLeft: -imgParams.width/2
+            	})
+        	)
+            .appendTo(cont);
+        }
+        else if(use2d){
+			var back_img = $("<div>").css({
+				position: 'absolute',
+				top: 0,
+				left: direction?0:'50%',
+				width: '50%',
+				height: '100%',
+				overflow: 'hidden',
+				zIndex: 6
+			})
+			.append($(images.get(new_index)).clone().css({
+				position: 'absolute',
+				height: '100%',
+				right: direction?'auto':0,
+				left: direction?0:'auto'
+			}))
+			.appendTo(cont)
+			.hide();
+			
+			var cont_canvas = $('<div>')
+			.css({
+				position: 'absolute',
+				width: '100%',
+				height: '100%',
+				left: 0,
+				top: 0,
+				zIndex: 8
+			})
+			.appendTo(cont).hide();
+			
+			// Canvas, which will occur animation paging
+			var animate_layer = $('<canvas>').css({
+				position: 'absolute',
+				zIndex: 2,
+				left: 0,
+				top: -cont_canvas.height()*perspective/2
+			})
+			.attr({
+				width: cont_canvas.width(),
+				height: cont_canvas.height()*(perspective+1)
+			})
+			.appendTo(cont_canvas);
+			
+			// Canvas with shadow
+			var back_layer = animate_layer.clone()
+			.css({
+				top: 0,
+				zIndex: 1
+			})
+			.attr({
+				width: cont_canvas.width(),
+				height: cont_canvas.height()
+			})
+			.appendTo(cont_canvas);
+			
+			var animate_canv = animate_layer.get(0).getContext("2d");
+			var back_canv = back_layer.get(0).getContext("2d");
+        }
+		else{
+            // == ws_basic
+            ul.stop(true).animate(
+                // opera do bug for "0%"
+                // safari (win?) do bug for 0
+                {left: (new_index ? -new_index + "00%" : (/Safari/.test(navigator.userAgent) ? "0%" : 0))},
+                duration,
+                "easeInOutExpo"
+            )
+		}
+		
+		// start rotation
+		if(!use3d && use2d){
+			var cont1 = animate_canv;
+			var cont2 = back_canv;
+			var item1 = cur_img;
+			var item2 = new_img;
+		}
+
+		thread = new list(direction, deg, cont1, cont2, item1, item2, cont_canvas, animate_layer, back_layer, back_img, imgParams, function(){
+			$this.trigger('effectEnd');
+			cont.remove();
+			thread = 0;
+		})
+    };
+	
+	// make img in perspective
+	// from: http://yuiblog.com/blog/2008/06/23/slicing/
+	function leafAndDraw(ctx, img, x, y, pixelWidth, scalingFactor, right, shadow, w, h, animate_layer) {		
+		// The number of slices to draw.
+		numSlices = pixelWidth/2,
+		
+		// How much should we scale the width of the slice 
+		// before drawing?
+		widthScale = pixelWidth / w,
+		
+		// How much should we scale the height of the slice 
+		// before drawing? 
+		heightScale = (1 - scalingFactor) / numSlices;
+
+
+		// clear canvas
+		ctx.clearRect(0, 0, animate_layer.width(), animate_layer.height());
+		
+		for(var n = 0; n < numSlices+widthScale; n++) {
+			// Source: where to take the slice from.
+			var sx = (right?
+					n * options.width / pixelWidth + options.width/2
+					:
+					(numSlices - n) * options.width / pixelWidth);
+			
+			// Destination: where to draw the slice to 
+			// (the transformation happens here).
+			var dx = x + (right?2:-2) * n,
+				dy = y + h * heightScale * n / 2;
+
+			if(sx<0) sx = 0;
+			if(dx<0) dx = 0;
+			if(dy<0) dy = 0;
+			
+			// img, sx, sy, swidth, sheight, dx, dy, dwidth, dheight
+			// 2.5 to remove the gap between the slices.
+			ctx.drawImage(img, sx, 0, 2.5, options.height, dx, dy, 2, h * (1 - (heightScale * n)));
+		}
+		
+		// Shadow
+		ctx.save();
+
+		ctx.beginPath();
+		ctx.moveTo(x, y);
+		ctx.lineTo(x + (right?2:-2)*(numSlices+widthScale), y + h * heightScale * (numSlices+widthScale) / 2);
+		ctx.lineTo(x + (right?2:-2)*(numSlices+widthScale), h * (1 - heightScale * (numSlices+widthScale)) + y + h * heightScale * (numSlices+widthScale) / 2);
+		ctx.lineTo(x, y + h);
+		ctx.closePath();
+		ctx.clip();
+		
+		ctx.fillStyle = "rgba(0,0,0,"+Math.round(shadow*100)/100+")";
+		ctx.fillRect(0, 0, animate_layer.width(), animate_layer.height());
+		
+		// Undo the clipping
+		ctx.restore();
+	}
+	
+	// makes rotate
+	function list(direction, deg, cont1, cont2, item1, item2, cont_canvas, animate_layer, back_layer, back_img, imgParams, callback){
+		if(use3d){
+			if (!direction) {
+				deg *= -1;
+				var temp = cont2;
+				cont2 = cont1;
+				cont1 = temp;
+				
+				temp = item2;
+				item2 = item1;
+				item1 = temp;
+			}
+
+
+			// Turning + shadow
+			setTimeout(function(){
+				cont1.children('img')
+				.css('opacity', shadow_intensity).animate({opacity: 1}, duration/2);
+
+				item1.css('transform', 'rotateY(' + deg + 'deg)')
+				.children('img').css('opacity', 1).animate({
+					opacity: shadow_intensity
+				}, duration / 2, function(){
+					item1.hide();
+
+					item2.show().css('transform', 'rotateX(0deg) rotateY(0deg)')
+					.children('img').css('opacity', shadow_intensity)
+					.animate({opacity: 1}, duration/2);
+
+					cont2.children('img')
+					.css('opacity', 1)
+					.animate({opacity: shadow_intensity}, duration/2);
+				});
+			},0);
+			setTimeout(callback, duration);
+		}
+		else if(use2d){
+			// direction, cont1, cont2, item1, item2, callback
+			// direction, animate_canv, back_canv, cur_index, new_index, callback
+			
+			cont_canvas.show();
+			var start = new Date; // save the start time
+			var first_iteration = true;
+
+			wowAnimate(
+				function(progress) {
+					// render animation
+					
+					// x: jquery var, t: current time, b: begInnIng value, c: change In value, d: duration
+					var progressX = jQuery.easing['easeInOutQuint'](1, progress, 0, 1, 1),
+						progressY = jQuery.easing['easeInOutCubic'](1, progress, 0, 1, 1),
+						right = !direction;
+					
+					if(progress < 0.5){
+						// The first part of the animated image
+						progressX *= 2;
+						progressY *= 2;
+						
+						var img = item1;
+					}
+					else{
+						// The second part of the animated image
+						right = direction;
+						progressX = (1-progressX)*2;
+						progressY = (1-progressY)*2;
+						
+						var img = item2;
+					}
+					
+					var sy = cont_canvas.height()*perspective/2,
+						dx = (1-progressX)*cont_canvas.width()/2,
+						dy = 1+progressY*perspective,
+						sx = cont_canvas.width()/2;
+
+					
+					// Draws a page with the current calculated position
+					leafAndDraw(cont1, img, sx, sy, dx, dy, right, progressY*shadow_intensity, sx, cont_canvas.height(), animate_layer);
+					
+					// Draws a portion of the new picture on the background
+					//get_canvas(back_canv).drawImage(images.get(new_index), options.width/2, 0, options.width, options.height, sx, 0, cont_canvas.width(), cont_canvas.height());
+					if(first_iteration){
+						back_img.show();
+						first_iteration = false;
+					}
+
+					// Cleaning the shadows behind
+					cont2.clearRect(0, 0, back_layer.width(), back_layer.height());
+					// Setting shadows behind
+					cont2.fillStyle = "rgba(0,0,0,"+(shadow_intensity-progressY*shadow_intensity)+")";
+					cont2.fillRect(right?sx:0, 0, back_layer.width()/2, back_layer.height());
+				}, 0, 1,
+				duration, callback
+			);
+		}
+	}
+}
+
+
+jQuery.extend( jQuery.easing, {
+	easeInOutCubic: function (x, t, b, c, d) {
+		if ((t/=d/2) < 1) return c/2*t*t*t + b;
+		return c/2*((t-=2)*t*t + 2) + b;
+	},
+	easeInOutQuint: function (x, t, b, c, d) {
+		if ((t/=d/2) < 1) return c/2*t*t*t*t*t + b;
+		return c/2*((t-=2)*t*t*t*t + 2) + b;
+	}
+});	

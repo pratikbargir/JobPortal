@@ -1,0 +1,143 @@
+// ws_caption_slide
+function ws_caption_slide(options, caption, prevCaption, title) {
+	var $ = jQuery;
+	// ------ additional function
+	// from easyjs
+	function cStyle(el, p_name){
+		var val, dv = document.defaultView;
+
+		// other
+		if (dv && dv.getComputedStyle){
+			var s = dv.getComputedStyle(el,'');
+			if (s) val = s.getPropertyValue(p_name);
+		}
+		else {
+			var pName = p_name.replace(/\-\w/g,function(s){return s.charAt(1).toUpperCase()});
+			if(el.currentStyle)
+				val = el.currentStyle[pName];
+			else
+				val = el.style[pName];
+		}
+
+		return val;
+	};
+
+	function myWidth(el,outer,margins){
+		var names = "padding-left|padding-right|border-left-width|border-right-width".split("|");
+		var padding = 0;
+		for (var i=0; i<names.length; i++)
+			padding += parseFloat(cStyle(el,names[i])) || 0;
+
+		var res = parseFloat(cStyle(el,'width'))
+				|| ((el.offsetWidth||0)-padding); // in ie computedStyle more right then offsetWidth
+		if (outer) res += padding;
+		if (margins)
+			res += (parseFloat(cStyle(el,"margin-left"))||0) + (parseFloat(cStyle(el,"margin-right"))||0);
+		return res
+	}
+
+	function myHeight(el,outer,margins){
+		var names = "padding-top|padding-bottom|border-top-width|border-bottom-width".split("|");
+		var padding = 0;
+		for (var i=0; i<names.length; i++)
+			padding += parseFloat(cStyle(el,names[i])) || 0;
+
+		var res = parseFloat(cStyle(el,'height'))
+				|| ((el.offsetHeight||0)-padding); // in ie computedStyle more right then offsetWidth
+		if (outer) res += padding;
+		if (margins)
+			res += (parseFloat(cStyle(el,"margin-top"))||0) + (parseFloat(cStyle(el,"margin-bottom"))||0);
+		return res
+	}
+
+	// showWithSlide restored from jquery ui effect.slide
+	// options {direction,distance,easing,duration}
+	function showWithSlide(element,options){
+
+		// Save & Show
+		var bkp_css = {position:0,top:0,left:0,bottom:0,right:0};
+		for(var p in bkp_css)
+			bkp_css[p] = element.get(0).style[p];// jquery css work wrong in IE7
+
+		element.show();
+
+
+		// Wraps the element around a wrapper that copies position properties
+		// wrap the element
+		//alert(cStyle(element.get(0),'padding-left'));
+		//alert(element.get(0).offsetWidth)
+		//alert(myWidth(element.get(0),1,1));
+
+		var wrap_props = {
+				width: myWidth(element.get(0),1,1),//+(document.all?1:0),// +1 need for correct real width with floating point in IE
+				height: myHeight(element.get(0),1,1),
+				'float': element.css('float'),
+				overflow:'hidden',
+				opacity: 0.0
+			};
+		for(var p in bkp_css) wrap_props[p] = bkp_css[p] || cStyle(element.get(0),p);
+
+		var wrapper = $('<div></div>')
+			.css({
+				fontSize: '100%',
+				background: 'transparent',
+				border: 'none',
+				margin: 0,
+				padding: 0
+			});
+
+		element.wrap(wrapper);
+		wrapper = element.parent(); //Hotfix for jQuery 1.4 since some change in wrap() seems to actually loose the reference to the wrapped element
+
+		// transfer positioning properties to the wrapper
+		if (element.css('position') == 'static') {
+			wrapper.css({ position: 'relative' });
+			element.css({ position: 'relative' });
+		} else {
+			$.extend(wrap_props, {
+				position: element.css('position'),
+				zIndex: element.css('z-index')
+			});
+			/*$.each(['top', 'left', 'bottom', 'right'], function(i, pos) {
+				wrap_props[pos] = element.css(pos);
+				if (isNaN(parseInt(wrap_props[pos], 10))) {
+					wrap_props[pos] = 'auto';
+				}
+			});*/
+			element.css({position: 'absolute', top: 0, left: 0, right: 'auto', bottom: 'auto' });
+		}
+		wrapper.css(wrap_props).show();
+
+		// prepare animation
+		var direction = options.direction || 'left'; // Default Direction
+		var ref = (direction == 'up' || direction == 'down') ? 'top' : 'left';
+		var pos_neg = (direction == 'up' || direction == 'left'); // positive / negative
+		var distance = options.distance || (ref == 'top' ? element.outerHeight(true) : element.outerWidth(true));
+		element.css(ref, pos_neg ? (isNaN(distance) ? "-" + distance : -distance) : distance); // Shift
+
+		// Animation
+		var animation = {};
+		animation[ref] = (pos_neg ? '+=' : '-=') + distance;
+
+		wrapper.animate({opacity:1.0},{duration: options.duration, easing: options.easing}); // fadeIn
+		element.animate(animation, { queue: false, duration: options.duration, easing: options.easing, complete: function(){
+			// Restore
+			element.css(bkp_css);
+			element.parent().replaceWith(element);
+			if (options.complete) options.complete();
+		}});
+	}
+
+
+	caption.stop(1,1).fadeOut(options.captionDuration/3, function() {
+		if(title) {
+			caption.html(title);
+			showWithSlide(caption, {
+				direction:'left',
+				easing:"easeInOutExpo",
+				complete: function(){ if(caption.get(0).filters) caption.get(0).style.removeAttribute('filter') },
+				duration: options.captionDuration
+			});
+		}
+	});
+}

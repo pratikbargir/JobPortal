@@ -1,0 +1,94 @@
+// parallax
+// options.parallax = [0, 1] - offset width*parallax
+function ws_parallax(options, images, container){
+    var $ = jQuery;
+    var $this = $(this);
+    var ul = container.find('.ws_list');
+    var parallax = options.parallax || 0.25; // [0, 1] - offset width*parallax
+    var effectCont = $('<div>')
+        .css({
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            overflow: 'hidden'
+        })
+        .addClass('ws_effect ws_parallax').appendTo(container);
+    
+    // round numbers 
+    // 2.65723434 -> 2.657
+    function round(num) {
+        return Math.round(num*1000)/1000;
+    }
+    
+    var cont1 = $('<div>').css({
+            position:'absolute',
+            left:0,
+            top:0,
+            overflow: 'hidden',
+            width: '100%',
+            height: '100%',
+            transform: 'translate3d(0,0,0)'
+        })
+        .appendTo(effectCont);
+    var cont2 = cont1.clone().appendTo(effectCont);
+
+    this.go = function(new_index, curIdx, dir){
+        var imgParams = $(images.get(curIdx));
+            imgParams = {
+                width: imgParams.width(),
+                height: imgParams.height(),
+                marginTop: imgParams.css('marginTop'),
+                marginLeft: imgParams.css('marginLeft')
+            };
+        
+        dir = dir?1:-1;
+
+        var curimg = $(images.get(curIdx)).clone().css(imgParams).appendTo(cont1);
+        var nextimg = $(images.get(new_index)).clone().css(imgParams).appendTo(cont2);
+
+        var w = container.width()||options.width;
+        var h = container.height()||options.height;
+
+        ul.hide();
+        
+        // start animate parallax
+        wowAnimate(function(a){
+                // set easing
+                a = $.easing.swing(a);
+
+                var cont1offset = round( dir*a*w ),
+                    cont2offset = round( dir*(-w+a*w) ),
+                    img1offset = round( -dir*w*parallax*a ),
+                    img2offset = round( dir*w*parallax*(1 - a) );
+
+                // use transform if supported
+                if(options.support.transform) {
+                    // first img
+                    cont1.css('transform', 'translate3d('+cont1offset+'px,0,0)');
+                    curimg.css('transform', 'translate3d('+img1offset+'px,0,0)');
+
+                    // second img
+                    cont2.css('transform', 'translate3d('+cont2offset+'px,0,0)');
+                    nextimg.css('transform', 'translate3d('+img2offset+'px,0,0)');
+                } else {
+                    // first img
+                    cont1.css('left', cont1offset);
+                    curimg.css('margin-left', img1offset);
+
+                    // second img
+                    cont2.css('left', cont2offset);
+                    nextimg.css('margin-left', img2offset);
+                }
+            }, 0, 1, options.duration,
+            function() {
+                // effect end
+                effectCont.hide();
+                curimg.remove();
+                nextimg.remove();
+                $this.trigger('effectEnd');
+            }
+        );
+    }
+};

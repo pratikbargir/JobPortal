@@ -1,0 +1,249 @@
+/* easings */
+jQuery.extend( jQuery.easing,
+{
+	easeInOutQuart: function (x, t, b, c, d) {
+		if ((t/=d/2) < 1) return c/2*t*t*t*t + b;
+		return -c/2 * ((t-=2)*t*t*t - 2) + b;
+	}
+});
+
+// carousel
+function ws_carousel_basic(options, images, container){
+	var $ = jQuery,
+		$this = $(this),
+		ul = $('.ws_list', container).css('opacity', 0),
+		isMobile = (/iPhone|iPod|iPad|Android|BlackBerry/).test(navigator.userAgent),
+		imgsCount = images.length,
+		partSize = 90, // 90% of container
+		mainSize = 100, // 100% of conatiner
+		partRotate = 60,
+		partOffset = 90,
+		additionalImg = 2,
+		imagesOnDemand = []; // on-demand non loaded images array
+
+	var effectCont = $('<div>').addClass('ws_effect ws_carousel_basic').css({
+		position: 'absolute',
+		top: 0,
+		left: 0,
+		width: '100%',
+		height: '100%',
+		overflow: 'hidden',
+		perspective: 2000
+	}).appendTo(container);
+
+
+	/*
+		[{
+			item: jQuery object,
+			id: item id
+		}]
+	*/
+	var imagesList = [];
+	function addImgs(num, invert) {
+		for (var i = 0; i < num; i++) {
+			var id = invert?(images.length - num + i):i;
+			while(id < 0) {
+				id += num - images.length;
+			}
+			while(id > images.length - 1) {
+				id -= num - images.length;
+			}
+			imagesList.push({
+				item: $('<div>').append($(images[id]).clone()
+					.css({outline: '1px solid transparent'})
+				).css({
+					position: 'absolute',
+					overflow: 'hidden',
+					top: 0,
+					left: 0,
+					width: '100%',
+					height: '100%'
+				}).appendTo(effectCont),
+				id: id
+			});
+			
+			// if on-demand
+			if(options.images) {
+				imagesOnDemand.push(!options.images[id].noimage);
+			}
+		}
+	}
+
+	// prepare images before main list
+	addImgs(additionalImg, true);
+
+	// prepare main images
+	addImgs(images.length);
+
+	// prepare images after main list
+	addImgs(additionalImg);
+
+
+	function updateImgParams() {
+		var imgParams = $(images[0]);
+			imgParams = {
+				width: imgParams.width(),
+				height: imgParams.height(),
+				marginTop: parseFloat(imgParams.css('marginTop')),
+				marginLeft: parseFloat(imgParams.css('marginLeft'))
+			};
+		for(var k in imagesList) {
+			if(imagesList[k] && imagesList[k].item) {
+				$(imagesList[k].item).find('img').css(imgParams);
+			}
+		}
+	}
+
+	// set positions of each image relatively image #id
+	function getCurPos(id) {
+		id *= -1;
+		var result = [];
+		for (var k in imagesList) {
+			var curStyle = {};
+			var curK = additionalImg - k;
+			
+			// curK != id - images before and after main
+			// else - main image
+			result.push( curK != id ? id - curK : 0 );
+		}
+
+		return result;
+	}
+
+	// start animation blocks from imagesList
+	function startAnimate(from, to, duration, callback) {
+		wowAnimate(function(progress) {
+			effectStep(from, to, progress);
+        }, 0, 1, duration, callback );
+    }
+
+	// from - from value
+	// to - to value
+	// a - progress from 0 to 1
+	function getCurValue(from, to, a) {
+		return from + (to - from) * a;
+	}
+	function setStyles(item, styles) {
+		if(options.support.transform) {
+			item.css({
+				transform: 'scale(' + styles.scale + ') translate3d(' + styles.offset + '%,0,0) rotateY(' + styles.rotate + 'deg)',
+				zIndex: styles.zIndex
+			});
+		} else {
+			item.css({
+				left: (100 * (1 - styles.scale) / 2 + styles.offset*0.85) + '%',
+				top: (100 * (1 - styles.scale) / 2) + '%',
+				width: (100 * styles.scale) + '%'
+			});
+		}
+	}
+	function effectStep(from, to, a, noEasing) {
+		if(!noEasing) {
+			a = $.easing.easeInOutQuart(1, a, 0, 1, 1, 1);
+		}
+
+		for(var k in from) {
+			var curOffset = getCurValue(from[k], to[k], a) * partOffset;
+			var curScale = partSize / 100;
+			var curRotate = 0;
+			var curZ = from[k] * (from[k] > 0 ? -1 : 1);
+			var curDirect = curOffset > 0 ? -1 : 1;
+
+			if(a > 0.5) {
+				curZ = to[k] * (to[k] > 0 ? -1 : 1);
+			}
+
+			// set scale and rotate prev and next images
+			if(from[k] === 0) {
+				curScale = getCurValue(mainSize, partSize, a) / 100;
+				curRotate = getCurValue(0, curDirect*partRotate, a);
+			}
+			if(to[k] === 0) {
+				curScale = getCurValue(partSize, mainSize, a) / 100;
+				curRotate = getCurValue(curDirect*partRotate, 0, a);
+			}
+
+			// set rotate before and after images
+			if(to[k] !== 0 && from[k] !== 0) {
+				curRotate = curDirect*partRotate;
+			}
+
+			if(imagesList[k] && imagesList[k].item) {
+				setStyles(imagesList[k].item, {
+					scale: curScale,
+					offset: curOffset,
+					rotate: curRotate,
+					zIndex: curZ
+				});
+			}
+		}
+	}
+
+    var startParams = getCurPos(options.startSlide);
+	startAnimate(startParams, startParams, 0);
+
+	updateImgParams();
+	$(window).on("load resize", updateImgParams);
+	this.go = function(next, cur){
+		updateImgParams();
+
+		// if on-demand
+		if (options.images && !imagesOnDemand[next + additionalImg]) {
+			var numLoad = next + additionalImg;
+
+			imagesOnDemand[numLoad] = true;
+
+			function newSrc(item) {
+				return item.find('img').attr("src", options.images[next].src);
+			}
+
+			newSrc(imagesList[numLoad].item);
+
+			// additional img src change
+			if(next < additionalImg) {
+				newSrc(imagesList[imagesList.length - next].item);
+			}
+			if(next + additionalImg >= images.length) {
+				newSrc(imagesList[next + additionalImg - images.length].item);
+			}
+		}
+
+		// ie7+
+		if (window.XMLHttpRequest) {
+			// set infinity slide
+			if(cur == images.length - 1 && next == 0) {
+				next = cur + 1;
+			}
+			if(cur == 0 && next == images.length - 1) {
+				next = -1;
+			}
+
+			startAnimate(
+				getCurPos(cur),
+				getCurPos(next),
+				options.duration, function() {
+				$this.trigger('effectEnd');
+			});
+		} else {
+			ul.stop(true).animate(
+				// opera do bug for "0%"
+				// safari (win?) do bug for 0
+				{left: (next?-next+"00%":(/Safari/.test(navigator.userAgent)?"0%":0))},
+				options.duration,
+				"easeInOutExpo",
+				function() {
+					$this.trigger('effectEnd');
+				}
+			);
+		}
+	}
+
+	this.step = function(curId, a) {
+		var nextId = curId + (a < 0 ? 1: -1);
+		if(a < 0) {
+			a *= -1;
+		}
+
+		effectStep(getCurPos(curId), getCurPos(nextId), a, true);
+	};
+}

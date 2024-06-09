@@ -1,0 +1,99 @@
+// turn
+// options.direction = 'left','right','down','up'
+jQuery.extend( jQuery.easing,
+{
+	easeInOutQuart: function (x, t, b, c, d) {
+		if ((t/=d/2) < 1) return c/2*t*t*t*t + b;
+		return -c/2 * ((t-=2)*t*t*t - 2) + b;
+	}
+});
+function ws_turn(options,images,container){
+	var $ = jQuery;
+	var $this = $(this);
+	var elems = $('li',container);
+	var ul = $('.ws_list',container);
+	var effectCont = $('<div>').addClass('ws_effect ws_turn').css({
+		position: 'absolute',
+		top: 0,
+		left: 0,
+		width: '100%',
+		height: '100%',
+		overflow: 'hidden',
+		perspective: 500
+	}).appendTo(container);
+
+	this.go = function(new_index,curIdx){
+		var contH = container.height();
+		var contW = container.width();
+
+		var dir = {
+			// transform-origin, rotate, fallback
+			// translateZ value over 0 - fix for IE (without it, image can't show oO)
+			left:  [ '0% 50%'    , { rotateY: 90, translate: [0,0,.1] }  , { left: -contW }],
+			right: [ '100% 50%'  , { rotateY: -90, translate: [0,0,.1] } , { left: contW }],
+			up:    [ '50% 0%'    , { rotateX: -90, translate: [0,0,.1] } , { top: -contH }],
+			down:  [ '50% 100%'  , { rotateX: 90, translate: [0,0,.1] }  , { top: contH }]
+		}[ options.direction || ['left','right','down','up'][Math.floor(Math.random()*4)] ];
+
+		var hiImg = $('<div>').css({
+					position:'absolute',
+					left: 0,
+					top: 0,
+					width: '100%',
+					height: '100%',
+					overflow: 'hidden',
+					transformOrigin: dir[0],
+					transformStyle: 'preserve-3d',
+					outline: '1px solid transparent',
+					zIndex:5
+				})
+				.append($(images.get(new_index)).clone()),
+			backImg = $('<div>').css({
+					position:'absolute',
+					left: 0,
+					top: 0,
+					width: '100%',
+					height: '100%',
+					overflow: 'hidden',
+					background: '#000',
+					zIndex:4
+				})
+				.append($(images.get(curIdx)).clone());
+			
+		effectCont.css({
+			perspectiveOrigin: dir[0]
+		});
+        
+        if(options.responsive < 3) {
+            hiImg.find('img').css('width', '100%');
+            backImg.find('img').css('width', '100%');
+        }
+
+		backImg.appendTo(effectCont);
+		hiImg.appendTo(effectCont);
+		
+		ul.stop(true,true).hide().css({left:-new_index+"00%"});
+
+		// prepare for animation
+		var from1 = dir[2];
+		var to1 = { top: 0, left: 0 };
+		var from2 = { opacity: 1 };
+		var to2 = { opacity: 0.2 };
+
+        if(options.support.transform) {
+			from1 = dir[1];
+			to1 = { rotateX: 0, rotateY: 0, translate: [0,0,0] };
+        }
+		
+		// start animation
+		wowAnimate(hiImg,
+			from1, to1, options.duration, 'easeInOutQuart',
+			function() {
+				$this.trigger('effectEnd');
+				hiImg.remove();
+				backImg.remove();
+			}
+		);
+		wowAnimate(backImg.find('img'), from2, to2, options.duration, 'easeInOutQuart');
+	}
+};

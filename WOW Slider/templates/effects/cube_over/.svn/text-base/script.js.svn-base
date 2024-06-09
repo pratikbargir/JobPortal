@@ -1,0 +1,289 @@
+// cube_over
+// options.direction - left,right,down,up
+// use: Modernizr library
+// based on: http://alexdunphy.github.io/refineslide/demo.html
+// shadow algorithm from : http://tympanus.net/Tutorials/3DShadingWithBoxShadows/
+// create .ws_effect
+// options.fallback 
+// options.staticColor - true not use RGBaster
+jQuery.extend( jQuery.easing,
+{
+	easeInOutBack: function (x, t, b, c, d, s) {
+		if (s == undefined) s = 1.70158; 
+		if ((t/=d/2) < 1) return c/2*(t*t*(((s*=(1.525))+1)*t - s)) + b;
+		return c/2*((t-=2)*t*(((s*=(1.525))+1)*t + s) + 2) + b;
+	}
+});
+
+function ws_cube_over(options, images, container){
+	var $ = jQuery,
+		$this = $(this),
+		wowsliderProg = /WOW Slider/g.test(navigator.userAgent),
+		ul = $('.ws_list', container),
+		perspective = options.perspective || /MSIE|Trident/g.test(navigator.userAgent)?1000:2000,
+		fullContCSS = {
+			position:'absolute',
+			backgroundSize: 'cover',
+			left:0,
+			top:0,
+			width: '100%',
+			height: '100%',
+			backfaceVisibility : 'hidden'
+		};
+	var webkit = /AppleWebKit/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+	
+
+	var effectCont = $('<div>')
+		.css(fullContCSS)
+		.css({
+			transformStyle: 'preserve-3d',
+			perspective: (webkit&&!wowsliderProg?'none':perspective),
+			zIndex:8
+		});
+	
+	$('<div>').addClass('ws_effect ws_cube_over')
+		.css(fullContCSS)
+		.append(effectCont)
+		.appendTo(container);
+	
+	if (!options.support.transform && options.fallback)
+		return new options.fallback(options, images, container);
+	
+	var thread;
+	this.go = function(new_index, curIdx){
+		var imgParams = $(images[curIdx]);
+			imgParams = {
+				width: imgParams.width(),
+				height: imgParams.height(),
+				marginTop: parseFloat(imgParams.css('marginTop')),
+				marginLeft: parseFloat(imgParams.css('marginLeft'))
+			};
+		// Args: translateZ, (next slide) translateX, (next slide) translateY, (next slide) rotateX, (next slide) rotateY, (wrap) rotateX, (wrap) rotateY
+		function cube(cont, slides, fixSafari, callback){
+			cont.parent().css('perspective', perspective);
+			
+			var w=cont.width(),
+				h=cont.height();
+
+			// unscale cube
+			wowAnimate(cont,
+				{ scale: 1, translate: [0,0,(webkit && !wowsliderProg)?fixSafari:0] },
+				{ scale: 0.85, translate: [0,0,(webkit && !wowsliderProg)?fixSafari:0] },
+				options.duration * 0.4, 'easeInOutBack', function() {
+					wowAnimate(cont,
+						{ scale: 0.85, translate: [0,0,(webkit && !wowsliderProg)?fixSafari:0] },
+						{ scale: 1, translate: [0,0,(webkit && !wowsliderProg)?fixSafari:0] },
+						options.duration * 0.4, options.duration - options.duration * 0.8, 'easeInOutBack', callback
+					);
+				}
+			);
+
+			// rotate cube
+			wowAnimate(slides.front.item,
+				{ rotateY: 0, rotateX: 0 },
+				{ rotateY: slides.front.rotateY, rotateX: slides.front.rotateX },
+				options.duration, 'easeInOutBack'
+			);
+			wowAnimate(slides.back.item,
+				{ rotateY: slides.back.rotateY, rotateX: slides.back.rotateX },
+				{ rotateY: 0, rotateX: 0 },
+				options.duration, 'easeInOutBack'
+			);
+			wowAnimate(slides.side.item,
+				{ rotateY: slides.side.rotateY, rotateX: slides.side.rotateX },
+				{ rotateY: -slides.side.rotateY, rotateX: -slides.side.rotateX },
+				options.duration, 'easeInOutBack'
+			);
+		}
+	
+		
+		if (options.support.transform && options.support.perspective){ 
+		
+			if (thread) thread.stop();
+
+
+			var w = container.width(),
+				h = container.height();
+
+			var params = {
+					left:	[w/2, 	0, 		0,  	180, 	0, 		-180],
+					right:	[w/2,   0, 		0,  	-180,	0,  	180],
+					down:	[h/2,   -h/2, 	180, 	0,  	-180,	0],
+					up:		[h/2,	h/2, 	-180,	0,  	180, 	0]
+				}
+				[ options.direction || ['left','right','down','up'][Math.floor(Math.random()*4)] ];
+			
+
+			var curImg = $('<img>').css(imgParams),
+				nextImg = $('<img>').css(imgParams).attr('src', images.get(new_index).src);
+			
+
+			var curCont = $('<div>').css({
+					overflow: 'hidden',
+					transformOrigin: '50% 50% -'+params[0]+'px'
+				}).css(fullContCSS)
+				.append(curImg).appendTo(effectCont)
+			var nextCont = $('<div>').css({
+					overflow: 'hidden',
+					transformOrigin: '50% 50% -'+params[0]+'px'
+				}).css(fullContCSS)
+				.append(nextImg).appendTo(effectCont)
+			var sideCont = $('<div class="ws_cube_side">').css({
+					transformOrigin: '50% 50% -'+params[0]+'px',
+					background: options.staticColor?'':RGBaster(nextImg[0], {exclude: [ '0,0,0', '255,255,255' ]})
+				})
+				.css(fullContCSS).appendTo(effectCont)
+
+			// prevent webkit blinking
+			curImg.on('load', function() {
+				ul.hide();
+			});
+			curImg.attr('src', images.get(curIdx).src).load();
+
+			effectCont.parent().show();
+			
+			thread = new cube(
+				effectCont,{
+					front: {
+						item: curCont,
+						rotateY: params[5],
+						rotateX: params[4]
+					},
+					back: {
+						item: nextCont,
+						rotateY: params[3],
+						rotateX: params[2]
+					},
+					side: {
+						item: sideCont,
+						rotateY: params[3] / 2,
+						rotateX: params[2] / 2
+					}
+				},
+				-params[0],
+				function(){
+					$this.trigger('effectEnd');
+					effectCont.empty().parent().hide();
+					thread =0;
+				}
+			)
+		}
+		else{ // Fallback if browser does not support 3d transforms/CSS transitions
+			// create tempory box
+			effectCont.css({
+				position:'absolute',
+				display:'none',
+				zIndex:2,
+				width: '100%',
+				height: '100%'
+			});
+			
+			
+			effectCont.stop(1,1);
+			var dir = (!!((new_index-curIdx+1)%images.length)^options.revers?'left':'right');
+			
+			// add current image
+			var curCont = $('<div>').css({
+					position:'absolute',left:'0%',right:'auto',top:0,width:'100%', height:'100%'
+				}).css(dir,0)
+				.append($(images[curIdx]).clone().css({
+					width: 100*imgParams.width/container.width()+'%',
+					height: 100*imgParams.height/container.height()+'%',
+					marginLeft: 100*imgParams.marginLeft/container.width()+'%'
+				}))
+				.appendTo(effectCont);
+			
+			
+			// add new image 
+			var newCont = $('<div>').css({
+					position:'absolute',left:'100%',right:'auto',top:0,width:'0%', height:'100%'
+				})
+				.append($(images[new_index]).clone().css({
+					width: 100*imgParams.width/container.width()+'%',
+					height: 100*imgParams.height/container.height()+'%',
+					marginLeft: 100*imgParams.marginLeft/container.width()+'%'
+				}))
+				.appendTo(effectCont);
+
+
+			// show tempory moving
+			effectCont.css({left:'auto',right:'auto',top:0}).css(dir,0).show();
+			// hide basic container
+			effectCont.show();
+			ul.hide();
+			
+			newCont.animate({width:'100%',left:0}, options.duration, "easeInOutExpo",function(){
+				$(this).remove();
+			});
+			
+			curCont.animate({width:0}, options.duration, "easeInOutExpo", function(){
+				$this.trigger('effectEnd');
+				effectCont.empty().hide();//hide().html('');
+			});
+		}
+	}
+
+
+	// Get Dominant Color Function
+	// Include RGBaster - https://github.com/briangonzalez/rgbaster.js
+	// modifed - wowslider.com
+	function RGBaster(img, opts) {
+		opts = opts || {};
+		var BLOCKSIZE = 1,
+			exclude = opts.exclude || [ ], // for example, to exlude white and black:	[ '0,0,0', '255,255,255' ]
+			data;
+
+		var canvas = document.createElement("canvas"),
+			context = canvas.getContext('2d'),
+			width  = canvas.width  = img.naturalWidth,
+			height = canvas.height = img.naturalHeight;
+		context.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight);
+		
+		try {
+			data = context.getImageData(opts.x?opts.x:0, opts.y?opts.y:0, opts.w?opts.w:img.width, opts.h?opts.h:img.height)['data'];
+		} catch(e) {
+			console.log("error:unable to access image data: " + e)
+			return '#ccc';
+		}
+
+
+		var length = (opts.w?opts.w:img.width * opts.h?opts.h:img.height) || data.length,
+			colorCounts = {},
+			rgbString = '',
+			rgb = [],
+			colors = {
+				dominant: { name: '', count: 0 }
+			};
+
+		// Loop over all pixels, in BLOCKSIZE iterations.
+		var i = 0;
+		while ( i < length ) {
+			rgb[0] = data[i];
+			rgb[1] = data[i+1];
+			rgb[2] = data[i+2];
+			rgbString = rgb.join(",");
+
+			// Keep track of counts.
+			if ( rgbString in colorCounts ) {
+				colorCounts[rgbString] = colorCounts[rgbString] + 1;
+			}
+			else{
+				colorCounts[rgbString] = 1;
+			}
+
+			// Find dominant and palette, ignoring those colors in the exclude list.
+			if ( exclude.indexOf( ['rgb(', rgbString, ')'].join('') ) === -1 ) {
+				var colorCount = colorCounts[rgbString];
+				if ( colorCount > colors.dominant.count ){
+					colors.dominant.name = rgbString;
+					colors.dominant.count = colorCount;
+				}
+			}
+
+			// Increment!
+			i += BLOCKSIZE * 4;
+		}
+
+		return ['rgb(', colors.dominant.name, ')'].join('');
+	};
+}

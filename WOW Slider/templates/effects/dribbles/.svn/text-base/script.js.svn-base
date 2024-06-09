@@ -1,0 +1,349 @@
+// dribbles
+jQuery.extend(jQuery.easing,
+{
+	easeOutBackCubic: function (x, t, b, c, d, s) {
+		var ts=(t/=d)*t;
+		return b+c*(-1.5*ts*t*ts + 2*ts*ts + 4*ts*t + -9*ts + 5.5*t);
+	}
+}); 
+function ws_dribbles(options, images, container){
+	var $ = jQuery;
+	var $this = $(this);
+	var noCanvas = options.noCanvas || !document.createElement("canvas").getContext;
+	var w = options.width, h = options.height;
+	var effectCont = $('<div>')
+		.css({
+			position: 'absolute',
+			top: 0,
+			left: 0,
+			width: '100%',
+			height: '100%',
+			overflow: 'hidden'
+		})
+		.addClass('ws_effect ws_dribbles').appendTo(container);
+
+	if(!noCanvas) {
+		var canvas = $('<canvas>').css({
+				position:'absolute',
+				left:0,
+				top:0,
+				width: '100%',
+				height: '100%'
+			}).appendTo(effectCont);
+		var ctx = canvas.get(0).getContext('2d');
+	}
+
+	// default bubble colors
+	// 0 - default color
+	// 1 - default x offset
+	// 2 - default y offset
+	// 3 - default radius
+	var bubbleDefaults = [
+		['#bbbbbb',  0.1,   0.3,    0.18],
+		['#b3b3b3',  0.9,   0.8,    0.15],
+		['#b6b6b6',  0.68,  0.4,    0.2],
+		['#b9b9b9',  0.25,  0.4,    0.15],
+		['#cccccc',  0.11,  0.7,    0.15],
+		['#c3c3c3',  0.18,  0.1,    0.15],
+		['#c6c6c6',  0.4,   0.2,    0.15],
+		['#c9c9c9',  0.55,  -0.04,  0.18],
+		['#d3d3d3',  0,     0.95,   0.13],
+		['#d6d6d6',  0.5,   0.8,    0.22],
+		['#d9d9d9',  0.9,   0.1,    0.18],
+		['#eeeeee',  0.3,   0.9,    0.18],
+		['#e3e3e3',  0.93,  0.5,    0.14],
+		['#e6e6e6',  0.7,   0.9,    0.15]
+	];
+
+	/*
+		CURRENT
+		[0, 1, 0.1, 0.3]
+
+		MEANING
+		[x offset, y offset, delay, duration]
+	*/
+	var bubbles = [
+		// scaling
+		[/*   X      Y       Del    Dur  */
+			[ 0.1,   0.3,    0,     1    ],
+			[ 0.9,   0.8,    0.15,  0.85 ],
+			[ 0.68,  0.4,    0,     0.9  ],
+			[ 0.25,  0.4,    0.21,  0.79 ],
+			[ 0.11,  0.7,    0.3,   0.7  ],
+			[ 0.18,  0.1,    0.45,  0.55 ],
+			[ 0.4,   0.2,    0,     0.75 ],
+			[ 0.55,  -0.04,  0.48,  0.52 ],
+			[ 0,     0.95,   0.21,  0.79 ],
+			[ 0.5,   0.8,    0.1,   0.9  ],
+			[ 0.9,   0.1,    0.25,  0.75 ],
+			[ 0.3,   0.9,    0.18,  0.82 ],
+			[ 0.93,  0.5,    0.4,   0.6  ],
+			[ 0.7,   0.9,    0.13,  0.87 ]
+		],
+
+		// move left top
+		[/*   X      Y       Del    Dur  */
+			[ -0.3,  -0.2,   0.06,  1 ],
+			[ -0.1,  -0.3,   0.12,  1 ],
+			[ -0.2,  -0.5,   0,     1 ],
+			[ -0.1,  -0.3,   0.24,  1 ],
+			[ -0.3,  -0.4,   0.4,   1 ],
+			[ -0.5,  -0.1,   0.76,  1 ],
+			[ -0.2,  -0.1,   0.62,  1 ],
+			[ -0.3,  -0.3,   0.48,  1 ],
+			[ -0.4,  -0.1,   0.05,  1 ],
+			[ -0.5,  -0.2,   0.6,   1 ],
+			[ -0.3,  -0.25,  0.75,  1 ],
+			[ -0.1,  -0.4,   0.3,   1 ],
+			[ -0.2,  -0.35,  0.95,  1 ],
+			[ -0.15, -0.25,  0.2,   1 ]
+		],
+
+		// move right bottom
+		[/*   X     Y      Del    Dur  */
+			[ 1.3,  1.2,   0.06,  1 ],
+			[ 1.1,  1.3,   0.12,  1 ],
+			[ 1.2,  1.5,   0,     1 ],
+			[ 1.1,  1.3,   0.24,  1 ],
+			[ 1.3,  1.4,   0.4,   1 ],
+			[ 1.5,  1.1,   0.76,  1 ],
+			[ 1.2,  1.1,   0.62,  1 ],
+			[ 1.3,  1.3,   0.48,  1 ],
+			[ 1.4,  1.1,   0.05,  1 ],
+			[ 1.5,  1.2,   0.6,   1 ],
+			[ 1.3,  1.25,  0.75,  1 ],
+			[ 1.1,  1.4,   0.3,   1 ],
+			[ 1.2,  1.35,  0.95,  1 ],
+			[ 1.15, 1.25,  0.2,   1 ]
+		],
+		
+		// move down and scale
+		[/*   X      Y      Del    Dur  */
+			[ 0.1,   1.3,   0,     1    ],
+			[ 0.9,   1.34,  0.15,  0.85 ],
+			[ 0.68,  1.23,  0,     0.9  ],
+			[ 0.25,  1.5,   0.21,  0.79 ],
+			[ 0.11,  1.2,   0.3,   0.7  ],
+			[ 0.18,  1.4,   0.16,  0.84 ],
+			[ 0.4,   1.17,  0,     0.75 ],
+			[ 0.55,  1.2,   0,     0.52 ],
+			[ 0,     1.5,   0.21,  0.79 ],
+			[ 0.5,   1.45,  0,     0.9  ],
+			[ 0.9,   1.34,  0.25,  0.75 ],
+			[ 0.3,   1.6,   0.18,  0.82 ],
+			[ 0.93,  1.2,   0.09,  0.91 ],
+			[ 0.7,   1.15,  0.13,  0.87 ]
+		],
+
+		// move top and scale
+		[/*   X      Y       Del    Dur  */
+			[ 0.1,   -0.3,   0,     1    ],
+			[ 0.9,   -0.34,  0.15,  0.85 ],
+			[ 0.68,  -0.23,  0,     0.9  ],
+			[ 0.25,  -0.5,   0.21,  0.79 ],
+			[ 0.11,  -0.2,   0.3,   0.7  ],
+			[ 0.18,  -0.4,   0.16,  0.84 ],
+			[ 0.4,   -0.17,  0,     0.75 ],
+			[ 0.55,  -0.2,   0,     0.52 ],
+			[ 0,     -0.5,   0.21,  0.79 ],
+			[ 0.5,   -0.45,  0,     0.9  ],
+			[ 0.9,   -0.34,  0.25,  0.75 ], 
+			[ 0.3,   -0.6,   0.18,  0.82 ],
+			[ 0.93,  -0.2,   0.09,  0.91 ],
+			[ 0.7,   -0.15,  0.13,  0.87 ]
+		],
+		
+		// move discordantly and scale
+		[/*   X       Y       Del    Dur  */
+			[ -0.2,   -0.1,   0,     1    ],
+			[ 1.3,    1.1,    0.15,  0.85 ],
+			[ 0.48,   1.4,    0,     0.9  ],
+			[ 1.2,    1.6,    0.21,  0.79 ],
+			[ 1.11,   -0.15,  0.3,   0.7  ],
+			[ 0.28,   1.3,    0.16,  0.84 ],
+			[ -0.1,   -0.4,   0,     0.75 ],
+			[ 0.15,   1.3,    0,     0.52 ],
+			[ -0.5,   0.85,   0.21,  0.79 ],
+			[ -0.2,   0.7,    0,     0.9  ],
+			[ 1.4,    0.2,    0.25,  0.75 ],
+			[ 1.1,    1.5,    0.18,  0.82 ],
+			[ -0.43,  -0.2,   0.09,  0.91 ],
+			[ 0.7,    1.5,    0.13,  0.87 ]
+		]
+	];
+
+
+    // prepare bubbles params and draw it on canvas
+    // @ctx      {{context}} - canvas context
+    // @a        {{double}}  - current state from 0 to 1
+    // @bubbles  {{object}}  - list of bubbles params
+    // @ease     {{string}}  - name of easing function
+    function drawBubbles(ctx, a, bubbles, ease) {
+		ctx.clearRect(0, 0, w, h); // clear old canvas
+
+		for(var k = 0, len = bubbles.length; k < len; k++) {
+			// get current bubble params
+			var curDuration = 2-bubbles[k][3];
+			var curDelay = bubbles[k][2]*(1-a);
+			var progress = Math.max(0, Math.min(1, a*curDuration-curDelay));
+
+			// use easing
+			// (x, t, b, c, d, s)
+			// t: current time, b: begInnIng value, c: change In value, d: duration
+			if(ease && $.easing[ease])
+				progress = $.easing[ease](1, progress, 0, 1, 1, 1);
+
+			// when width/width ~ 1.8 - bubbles no fill all canvas
+			var radiusMul = w;
+			if(w/h <= 1.8 && w/h > 0.7) {
+				radiusMul *= 2;
+			} else if (w/h <= 0.7) {
+				radiusMul = h*2;
+			}
+
+			// draw current bubble
+			ctx.beginPath();
+			ctx.arc(
+				// x
+				(bubbles[k][0]+(bubbleDefaults[k][1]-bubbles[k][0])*progress)*w,
+				// y
+				(bubbles[k][1]+(bubbleDefaults[k][2]-bubbles[k][1])*progress)*h,
+				// r
+				bubbleDefaults[k][3]*progress*radiusMul,
+				0, 2 * Math.PI, false
+			);
+			ctx.fillStyle = bubbleDefaults[k][0];
+			ctx.fill();
+		}
+    }
+
+	this.go = function(new_index, curIdx){
+		// if no canvas use fallback - slide
+		if(noCanvas) {
+			container.find('.ws_list').css('transform', 'translate3d(0,0,0)').stop(true).animate(
+				// opera do bug for "0%"
+				// safari (win?) do bug for 0
+				{left: (new_index?-new_index+"00%":(/Safari/.test(navigator.userAgent)?"0%":0))},
+				options.duration,
+				"easeInOutExpo",
+				function() {$this.trigger('effectEnd')}
+			);
+		}
+
+		// use canvas effect
+		else {
+			w = container.width();
+			h = container.height();
+			var startId = Math.floor(Math.random()*(bubbles.length));
+			var startBubbles = bubbles[startId];
+			var endBubbles = bubbles[Math.floor(Math.random()*(bubbles.length))];
+
+			canvas.attr({width: w, height: h});
+
+			// use cur image when effect #0, else use next image
+			var img = images.get(startId==0?curIdx:new_index);
+			// update bubbles colors
+			for(var k = 0, len = bubbleDefaults.length; k < len; k++) {
+				var curX = Math.abs(bubbleDefaults[k][1]),
+					curY = Math.abs(bubbleDefaults[k][2]);
+				
+				bubbleDefaults[k][0] = RGBaster(img, {
+					x: curX*w,
+					y: curY*h,
+					w: 2,
+					h: 2
+				}) || bubbleDefaults[k][0];
+			}
+
+			// start animation
+			wowAnimate(function(a) {
+					drawBubbles(ctx, a, startBubbles, 'easeOutBackCubic');
+				}, 0, 1,
+				options.duration/2,
+				function() {
+					container.find('.ws_list').css({
+						left: (new_index?-new_index+"00%":(/Safari/.test(navigator.userAgent)?"0%":0))
+					});
+
+					wowAnimate(function(a) {
+							drawBubbles(ctx, 1-a, endBubbles, 'easeOutBackCubic');
+						}, 0, 1,
+						options.duration/2,
+						function() {
+							ctx.clearRect(0, 0, w, h);
+							$this.trigger('effectEnd');
+						}
+					);
+				}
+			);
+		}
+	}
+
+
+	// Get Dominant Color Function
+	// Include RGBaster - https://github.com/briangonzalez/rgbaster.js
+	// modifed - wowslider.com
+	function RGBaster(img, opts) {
+		opts = opts || {};
+		var BLOCKSIZE = 1,
+			exclude = opts.exclude || [ ], // for example, to exlude white and black:	[ '0,0,0', '255,255,255' ]
+			data;
+
+		var canvas = document.createElement("canvas"),
+			context = canvas.getContext('2d'),
+			width  = canvas.width  = img.naturalWidth,
+			height = canvas.height = img.naturalHeight;
+		context.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight);
+		
+		try {
+			data = context.getImageData(opts.x?opts.x:0, opts.y?opts.y:0, opts.w?opts.w:img.width, opts.h?opts.h:img.height)['data'];
+		} catch(e) {
+			/* wowslider.com changes
+
+			console.log("error:unable to access image data: " + e)
+			return '#ccc';
+			*/
+			return false;
+		}
+
+
+		var length = (opts.w?opts.w:img.width * opts.h?opts.h:img.height) || data.length,
+			colorCounts = {},
+			rgbString = '',
+			rgb = [],
+			colors = {
+				dominant: { name: '', count: 0 }
+			};
+
+		// Loop over all pixels, in BLOCKSIZE iterations.
+		var i = 0;
+		while ( i < length ) {
+			rgb[0] = data[i];
+			rgb[1] = data[i+1];
+			rgb[2] = data[i+2];
+			rgbString = rgb.join(",");
+
+			// Keep track of counts.
+			if ( rgbString in colorCounts ) {
+				colorCounts[rgbString] = colorCounts[rgbString] + 1;
+			}
+			else{
+				colorCounts[rgbString] = 1;
+			}
+
+			// Find dominant and palette, ignoring those colors in the exclude list.
+			if ( exclude.indexOf( ['rgb(', rgbString, ')'].join('') ) === -1 ) {
+				var colorCount = colorCounts[rgbString];
+				if ( colorCount > colors.dominant.count ){
+					colors.dominant.name = rgbString;
+					colors.dominant.count = colorCount;
+				}
+			}
+
+			// Increment!
+			i += BLOCKSIZE * 4;
+		}
+
+		return ['rgb(', colors.dominant.name, ')'].join('');
+	};
+}

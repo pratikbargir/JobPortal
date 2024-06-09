@@ -1,0 +1,47 @@
+// fade
+// options.noCross - Do not use crossfade
+function ws_fade(options, images, container){
+	var $ = jQuery,
+		$this = $(this),
+		ul = $('.ws_list', container),
+		fullContCSS = {
+			position:'absolute',
+			left:0,
+			top:0,
+			width:'100%',
+			height:'100%',
+			maxHeight: 'none',
+			maxWidth: 'none',
+			transform: 'translate3d(0,0,0)'
+		},
+		effectCont = $('<div>').addClass('ws_effect ws_fade').css(fullContCSS).css('overflow', 'hidden').appendTo(container);
+
+	this.go = function(new_index, curIdx){
+		var newImg = $(images.get(new_index)),
+			imgParams = {
+				width: newImg.width(),
+				height: newImg.height()
+			};
+
+		newImg = newImg.clone().css(fullContCSS).css(imgParams).appendTo(effectCont)
+
+		if (!options.noCross){
+			var curImg = $(images.get(curIdx)).clone().css(fullContCSS).css(imgParams).appendTo(effectCont);
+			
+			// hide old
+			wowAnimate(curImg,
+				{ opacity: 1 }, { opacity: 0 },
+				options.duration, function(){curImg.remove()}
+			);
+		}
+		
+		// show new
+		wowAnimate(newImg,
+			{ opacity: 0 }, { opacity: 1 },
+			options.duration, function(){
+				$this.trigger('effectEnd');
+				newImg.remove();
+			}
+		);
+	}
+}

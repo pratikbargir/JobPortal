@@ -1,0 +1,103 @@
+// blinds
+// options.parts = 3 - parts count
+function ws_blinds(options, $IMGs, container){
+    var $ = jQuery;
+    var $this = $(this);
+    var cnt = options.parts || 3; // count of parts
+    var ul = $('.ws_list',container);
+
+    var partscont = $('<div>').addClass('ws_effect ws_blinds').css({
+            position: 'absolute',
+            width: '100%',
+            height: '100%',
+            left: 0,
+            top: 0,
+            'z-index': 8
+        }).hide().appendTo(container);
+
+    var backCont = $('<div>').css({
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        overflow:'hidden'
+    }).appendTo(partscont);
+    var parts=[];
+
+    // IE9+
+    var modernBrowsers = document.addEventListener;
+    for (var i=0;i<cnt;i++) 
+        parts[i] = $('<div>').css({
+            position: modernBrowsers?'relative':'absolute',
+            display: modernBrowsers?'inline-block':'block',
+            height: '100%',
+            width: (100/cnt + 0.001).toFixed(3)+'%',
+            border: 'none',
+            margin: 0,
+            overflow:'hidden',
+            top: 0,
+            left: modernBrowsers?0:((100*i/cnt).toFixed(3) + '%')
+        }).appendTo(partscont);
+
+
+    this.go = function(index, prevIndex, dir){
+        if(dir == undefined)
+            dir = prevIndex>index? 1: 0; //1 or 0
+        
+        partscont.find("img").stop(true,true);
+        partscont.show();
+        
+
+        // get fact image width, height
+        var prevImg = $($IMGs[prevIndex]);
+        var imageSizes = {
+            width: prevImg.width() || options.width,
+            height: prevImg.height() || options.height
+        };
+
+        // back image move
+        var backImg = prevImg.clone().css(imageSizes).appendTo(backCont);
+        backImg.from = {left: 0};
+        backImg.to = {left: (!dir?1:-1)*backImg.width()*0.5}
+
+        // if transform support
+        if(options.support.transform) {
+            backImg.from = {translate: [backImg.from.left, 0, 0]};
+            backImg.to = {translate: [backImg.to.left, 0, 0]}
+        }
+        
+        ul.hide();
+
+        wowAnimate(backImg, backImg.from, backImg.to,
+            options.duration, options.duration*0.1, 'swing'
+        );
+        
+        // parts images move
+        for (var i=0; i<parts.length; i++){
+            var part = parts[i];
+            var curImg = $($IMGs[index]).clone().css({position:'absolute',top: 0}).css(imageSizes).appendTo(part);
+            curImg.from = {left: (!dir?-1:1) * curImg.width() - part.position().left};
+            curImg.to = {left: -part.position().left}
+
+            // if transform support
+            if(options.support.transform) {
+                curImg.from = {translate: [curImg.from.left, 0, 0]};
+                curImg.to = {translate: [curImg.to.left, 0, 0]}
+            }
+
+            wowAnimate(curImg, curImg.from, curImg.to,
+                (options.duration/(parts.length+1)) * (dir? (parts.length-i+1): (i+2)),
+                'swing',
+                ((!dir&& i==parts.length-1 || dir&&!i)
+                    ? function(){
+                        $this.trigger('effectEnd');
+                        partscont.hide().find("img").remove();
+                        backImg.remove();
+                    }
+                    : false
+                )
+            );
+        }
+    }
+};

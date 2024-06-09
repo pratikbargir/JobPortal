@@ -1,0 +1,294 @@
+// slices
+// options.fadeOut - fade out old image 
+function ws_slices(options, images, $container){
+	var $ = jQuery;
+	var $this = $(this);
+	
+
+	function animateMe($obj, from, to, duration, delay, callback) {
+        if(options.support.transform) {
+            if(from.top) from.translate = [0, from.top || 0, 0];
+            if(to.top) to.translate = [0, to.top || 0, 0];
+            delete from.top;
+            delete to.top;
+        }
+
+		wowAnimate($obj, 
+			from, to, duration, delay, 'swing', callback
+		);
+    }
+	
+	//-------------------------- branched from nivoslider ------------------------
+	var SlicesEffect = function(element, options){
+		//Defaults are below
+		var settings = $.extend({}, {
+			effect:'random',
+			slices:15,
+			animSpeed:500,
+			pauseTime:3000,
+			startSlide:0,
+			container: null,
+			onEffectEnd:0
+		}, options);
+		
+
+        //Useful variables. Play carefully.
+        var vars = {
+            currentSlide: 0,
+            currentImage: '',
+            totalSlides: 0,
+            randAnim: '',
+            stop:false
+        };
+    
+        //Get this slider
+        var slider = $(element);
+        slider.data('wow:vars', vars);
+		if (!/absolute|relative/.test( slider.css('position')))
+			slider.css('position','relative');
+        
+		var container = options.container || slider;
+        
+        //Find our slider children
+        var kids = slider.children();
+        vars.totalSlides = kids.length;
+        
+        //Set startSlide
+        if(settings.startSlide > 0){
+            if(settings.startSlide >= vars.totalSlides) settings.startSlide = vars.totalSlides - 1;
+            vars.currentSlide = settings.startSlide;
+        }
+        
+        //Get initial image
+        if($(kids[vars.currentSlide]).is('img')){
+            vars.currentImage = $(kids[vars.currentSlide]);
+        } else {
+            vars.currentImage = $(kids[vars.currentSlide]).find('img:first');
+        }
+        
+        //Show initial link
+        if($(kids[vars.currentSlide]).is('a')){
+            $(kids[vars.currentSlide]).css('display','block');
+        }
+        
+        //Add initial slices
+        for(var i = 0; i < settings.slices; i++){
+            var sliceWidth = Math.round(container.width()/settings.slices);
+			var slice = $('<div class="wow-slice"></div>').css({ 
+				left	: sliceWidth*i+'px', 
+				overflow: 'hidden',
+				width	: ((i == settings.slices-1)? (container.width()-(sliceWidth*i)): sliceWidth)+'px', 
+				position: 'absolute' 
+			}).appendTo(container);
+
+			$('<img>').css({
+				position:'absolute',
+				left:0,
+				top:0,
+				transform: 'translate3d(0,0,0)'
+			}).appendTo(slice);
+        }
+        
+        //In the words of Super Mario "let's a go!"
+        var timer = 0;
+
+		// for external controling
+		this.sliderRun = function(index, effect){
+			if (vars.busy) return false;
+			settings.effect = effect || settings.effect;
+			vars.currentSlide = index-1;
+			sliderRun(slider, kids, settings, false);
+			return true;
+		};
+		
+		var onEnd = function(){
+			if (settings.onEffectEnd) settings.onEffectEnd(vars.currentSlide);
+			container.hide();
+			$('.wow-slice', container).css({
+				transition: '',
+				transform: ''
+			});
+			vars.busy = 0;
+		}
+		
+        // Private run method
+		var sliderRun = function(slider, kids, settings, nudge){
+			//Get our vars
+			var vars = slider.data('wow:vars');
+			
+            // Stop
+			if((!vars || vars.stop) && !nudge) return false;
+			
+			vars.busy = 1;
+			vars.currentSlide++;
+		
+            //Trigger the slideshowEnd callback
+			if(vars.currentSlide == vars.totalSlides){ 
+				vars.currentSlide = 0;
+			}
+			if(vars.currentSlide < 0) vars.currentSlide = (vars.totalSlides - 1);
+			//Set vars.currentImage
+			vars.currentImage = $(kids[vars.currentSlide]);
+			if (!vars.currentImage.is('img'))
+				vars.currentImage = vars.currentImage.find('img:first');
+			
+			var imgParams = $(images[vars.currentSlide]);
+				imgParams = {
+					width: imgParams.width(),
+					heiht: imgParams.height(),
+					marginTop: imgParams.css('marginTop'),
+					marginLeft: imgParams.css('marginLeft')
+				};
+			//Set new slice backgrounds
+			$('.wow-slice', container).each(function(i){
+				var slice = $(this), img = $('img',slice);
+				var sliceWidth = Math.round(container.width()/settings.slices);
+				img.width(container.width());
+				img.attr('src',vars.currentImage.attr('src'));
+				img.css({
+					left:-sliceWidth*i+'px'
+				}).css(imgParams);
+					
+				slice.css({ height:'100%', opacity:0, 
+					left	: sliceWidth*i, 
+					width	: ((i == settings.slices-1)? (container.width()-(sliceWidth*i)): sliceWidth)
+				});
+			});
+			container.show();
+			
+			
+			if(settings.effect == 'random'){
+				var anims = new Array("sliceDownRight","sliceDownLeft","sliceUpRight","sliceUpLeft","sliceUpDownRight","sliceUpDownLeft","fold","fade");
+				vars.randAnim = anims[Math.floor(Math.random()*(anims.length + 1))];
+				if(vars.randAnim == undefined) vars.randAnim = 'fade';
+			}
+            
+            //Run random effect from specified set (eg: effect:'fold,fade')
+            if(settings.effect.indexOf(',') != -1){
+                var anims = settings.effect.split(',');
+                vars.randAnim = $.trim(anims[Math.floor(Math.random()*anims.length)]);
+            }
+
+			//Run effects
+			// sliceDownRight sliceDownLeft
+			if(settings.effect == 'sliceDown' || settings.effect == 'sliceDownRight' || vars.randAnim == 'sliceDownRight' || settings.effect == 'sliceDownLeft' || vars.randAnim == 'sliceDownLeft'){
+				var timeBuff = 0;
+				var slices = $('.wow-slice', container);
+				if(settings.effect == 'sliceDownLeft' || vars.randAnim == 'sliceDownLeft') slices = slices._reverse();
+
+				slices.each(function(i){
+					animateMe(
+						$(this),
+						{ top:'-100%', opacity:0 },
+						{ top:'0%', opacity:1 },
+						settings.animSpeed,
+						100 + timeBuff,
+						(i == settings.slices-1)?onEnd:0
+					);
+
+					timeBuff += 50;
+				});
+			} 
+			// sliceUpRight sliceUpLeft
+			else if(settings.effect == 'sliceUp' || settings.effect == 'sliceUpRight' || vars.randAnim == 'sliceUpRight' || settings.effect == 'sliceUpLeft' || vars.randAnim == 'sliceUpLeft'){
+				var timeBuff = 0;
+				var slices = $('.wow-slice', container);
+				if(settings.effect == 'sliceUpLeft' || vars.randAnim == 'sliceUpLeft') slices = slices._reverse();
+
+				slices.each(function(i){
+					animateMe(
+						$(this),
+						{ top: '100%', opacity:0 },
+						{ top: '0%', opacity:1 },
+						settings.animSpeed,
+						100 + timeBuff,
+						(i == settings.slices-1)?onEnd:0
+					);
+
+					timeBuff += 50;
+				});
+			} 
+			// sliceUpDownRight sliceUpDownLeft
+			else if(settings.effect == 'sliceUpDown' || settings.effect == 'sliceUpDownRight' || vars.randAnim == 'sliceUpDownRight' || settings.effect == 'sliceUpDownLeft' || vars.randAnim == 'sliceUpDownLeft'){
+				var timeBuff = 0;
+				var slices = $('.wow-slice', container);
+				if(settings.effect == 'sliceUpDownLeft' || vars.randAnim == 'sliceUpDownLeft') slices = slices._reverse();
+				
+				slices.each(function(i){
+					animateMe(
+						$(this),
+						{ top:((i % 2)?'-':'')+'100%', opacity:0 },
+						{ top:'0%', opacity:1 },
+						settings.animSpeed,
+						100 + timeBuff,
+						(i == settings.slices-1)?onEnd:0
+					);
+					timeBuff += 50;
+				});
+			} 
+			else if(settings.effect == 'fold' || vars.randAnim == 'fold'){
+				var timeBuff = 0;
+				var slices = $('.wow-slice', container);
+				var finalWidth = slices.width();
+
+				slices.each(function(i){
+					animateMe(
+						$(this),
+						{ width: 0, opacity:0 },
+						{ width: finalWidth, opacity:1 },
+						settings.animSpeed,
+						100 + timeBuff,
+						(i == settings.slices-1)?onEnd:0
+					);
+					timeBuff += 50;
+				});
+			}  
+			else if(settings.effect == 'fade' || vars.randAnim == 'fade'){
+				var slices = $('.wow-slice', container);
+
+				$('.wow-slice', container).each(function(i){
+					$(this).css('height','100%');
+					$(this).animate({ opacity:'1.0' }, (settings.animSpeed*2), (i == settings.slices-1)?onEnd:0);
+				});
+			}
+		}
+        
+    };
+	
+	$.fn._reverse = [].reverse;
+	//-------------------------- nivoslider end ------------------------
+
+
+	
+	// move images to additional content and clone fisrt for support border of images to show
+	var elems = $('li', $container);
+	var ul = $('ul', $container);
+
+	var effectCont = $('<div>').addClass('ws_effect ws_slices').css({
+		left: 0,
+		top: 0,
+		'z-index':8,
+		overflow: 'hidden',
+		width: '100%',
+		height:'100%',
+		position:'absolute'
+	}).appendTo($container);
+	
+	// Pass options to plugin constructor
+	var effect = new SlicesEffect(ul, {
+		keyboardNav: false,
+		caption: 0,
+		effect: "sliceDownRight,sliceDownLeft,sliceUpRight,sliceUpLeft,sliceUpDownRight,sliceUpDownLeft,sliceUpDownRight,sliceUpDownLeft,fold,fold,fold",
+		animSpeed: options.duration,
+		startSlide:options.startSlide,
+		container: effectCont,
+		onEffectEnd: function(index){
+			$this.trigger('effectEnd');
+		}
+	});
+	
+	this.go = function(index, cur_index){
+		var res = effect.sliderRun(index);
+		if (options.fadeOut) ul.fadeOut(options.duration);
+	}
+}

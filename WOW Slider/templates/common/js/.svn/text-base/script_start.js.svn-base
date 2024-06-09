@@ -1,0 +1,28 @@
+// init main object
+// jQuery(document).ready - conflicted with some scripts
+// Transition time = 2.4s = $SlideshowDelay$/10
+// SlideShow delay = 6.5s = $SlideshowDuration$/10
+jQuery('#wowslider-container$GallerySuffix$').wowSlider({
+	effect:"$ImageEffect$", 
+	prev:"$prevCaption$", 
+	next:"$nextCaption$", 
+	duration: $SlideshowDuration$*100, 
+	delay:$SlideshowDelay$*100, 
+	width:$ImageWidth$,
+	height:$ImageHeight$,
+	autoPlay:$AutoPlay$,
+	autoPlayVideo:$AutoPlayVideo$,
+	playPause:$PlayPause$,
+	stopOnHover:$StopOnHover$,
+	loop:$OneLoop$,
+	bullets:$ShowBullets$,
+	caption: $Captions$, 
+	captionEffect:"$CaptionsEffect$",
+	controls:$Controls$,
+	controlsThumb:$ArrowThumbs$,
+	responsive:$SizeStyle$,
+	fullScreen:$FullScreen$,
+	gestures: $SwipeSupport$,
+	onBeforeStep:$OnBeforeStep$,
+	images:$JSONList$
+});

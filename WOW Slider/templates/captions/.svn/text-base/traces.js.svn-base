@@ -1,0 +1,226 @@
+// ws_caption_traces
+;(function() {
+	var $ = jQuery;
+	var captionTimeout;
+	$.extend( $.easing,
+	{
+		easeInQuad: function (x, t, b, c, d) {
+			return c*(t/=d)*t + b;
+		},
+		easeOutQuad: function (x, t, b, c, d) {
+			return -c *(t/=d)*(t-2) + b;
+		}
+	});
+	window.ws_caption_traces = function(options, caption, prevCaption, title) {
+		var colors = ['#fff', '#ccc', '#555', '#000'];
+		var params = [
+			//TITLE     DESCR
+			[{top: -1},{left: 1}],
+			[{top: -1},{left: -1}],
+			[{left: -1},{left: 1}],
+			[{left: 1},{left: -1}]
+		][Math.floor(Math.random() * 4/*num of params*/)];
+
+		var rgbaSupports = (function() {
+				var div = $('<div>').css('backgroundColor', 'rgba(100,255,20,.5)');
+				return /rgba/g.test(div.css('backgroundColor'));
+			}());
+	 	// https://gist.github.com/THEtheChad/1297590
+		function colorParse(color) {
+		    var cache
+		      , p = parseInt // Use p as a byte saving reference to parseInt
+		      , color = color.replace(/\s\s*/g,'') // Remove all spaces
+		    ;//var
+
+		    if (color == 'transparent')
+		    	color = 'rgba(255,255,255,0)';
+		    
+		    // Checks for 6 digit hex and converts string to integer
+		    if (cache = /^#([\da-fA-F]{2})([\da-fA-F]{2})([\da-fA-F]{2})/.exec(color)) 
+		        cache = [p(cache[1], 16), p(cache[2], 16), p(cache[3], 16)];
+		        
+		    // Checks for 3 digit hex and converts string to integer
+		    else if (cache = /^#([\da-fA-F])([\da-fA-F])([\da-fA-F])/.exec(color))
+		        cache = [p(cache[1], 16) * 17, p(cache[2], 16) * 17, p(cache[3], 16) * 17];
+		        
+		    // Checks for rgba and converts string to
+		    // integer/float using unary + operator to save bytes
+		    else if (cache = /^rgba\(([\d]+),([\d]+),([\d]+),([\d]+|[\d]*.[\d]+)\)/.exec(color))
+		        cache = [+cache[1], +cache[2], +cache[3], +cache[4]];
+		        
+		    // Checks for rgb and converts string to
+		    // integer/float using unary + operator to save bytes
+		    else if (cache = /^rgb\(([\d]+),([\d]+),([\d]+)\)/.exec(color))
+		        cache = [+cache[1], +cache[2], +cache[3]];
+		        
+		    // Otherwise throw an exception to make debugging easier
+		    else throw Error(color + ' is not supported by $.parseColor');
+		    
+		    // Performs RGBA conversion by default
+		    isNaN(cache[3]) && (cache[3] = 1);
+		    
+		    // Adds or removes 4th value based on rgba support
+		    // Support is flipped twice to prevent erros if
+		    // it's not defined
+		    return cache.slice(0,3 + !!rgbaSupports);
+		}
+
+		function getInterimColors(first, last, num) {
+			first = colorParse(first);
+			last = colorParse(last);
+			var result = [first];
+
+			for(var k = 0; k < num; k++) {
+				var cur = [
+					Math.round(first[0] - (k+1) * (first[0]-last[0])/(num+1)),
+					Math.round(first[1] - (k+1) * (first[1]-last[1])/(num+1)),
+					Math.round(first[2] - (k+1) * (first[2]-last[2])/(num+1))
+				];
+				// set 4 parameter
+				if(first.length==4) cur.push(first[3] - (k+1) * (first[3]-last[3])/(num+1));
+				result.push(cur);
+			}
+			result.push(last);
+
+			for(var k in result)
+				result[k] = (first.length==4?'rgba(':'rgb(')+result[k].join(',')+')';
+
+			return result;
+		}
+
+		// generate and insert colored trace into block
+		function setColors(block, params) {
+			if(!block || !block.length) return block;
+			var interim = 3;
+			var colorsList = getInterimColors(block.css('background-color'), block.css('color'), interim) || colors;
+			var contCss = {
+				position: 'absolute',
+				top: 0,
+				left: 0,
+				bottom: 0,
+				right: 0
+			};
+			var partsCss = {};
+
+			if(params.top) {
+				contCss.top = -params.top*block.innerHeight();
+
+				partsCss.height = 100/colorsList.length + '%';
+			} else if(params.left) {
+				contCss.position = 'absolute';
+
+				partsCss.height = '100%';
+				partsCss.width = 100/colorsList.length + '%';
+
+				if(params.left<0) {
+					contCss.left = -params.left*block.innerWidth();
+					partsCss['float'] = 'left';
+				} else {
+					contCss.right = params.left*block.innerWidth();
+					partsCss['float'] = 'right';
+				}
+			}
+
+			// colored layers
+			var colorsCont = $('<i class="ws-colored-traces">').css(contCss);
+
+			for(var k in colorsList) $('<i>').css({
+				display: 'block',
+				background: colorsList[k]
+			}).css(partsCss).appendTo(colorsCont);
+
+			return block.append(colorsCont);
+		}
+		// remove colored trace from block
+		function unsetColors(block) {
+			$('.ws-colored-traces', block).remove();
+			return block;
+		}
+
+		// start animate block
+		function animateDescr(block, params) {
+			var startBlockCss = {
+				visibility: 'visible'
+			};
+			var firstAnimate = {};
+			var secondAnimate = {};
+
+			if(params.top) {
+				startBlockCss.top = params.top*options.$this.height();
+				startBlockCss.height = Math.abs(params.top)*options.$this.height();
+
+				firstAnimate.top = 0;
+				secondAnimate.height = block.height();
+			} else if(params.left) {
+				startBlockCss.left = params.left*options.$this.width()*2;
+
+				secondAnimate.left = 0;
+
+				if(params.left<0) {
+					firstAnimate.left = startBlockCss.left/2;
+					startBlockCss.width = options.$this.width();
+					secondAnimate.width = block.width()+2;
+				} else {
+					startBlockCss.width = block.width()+2;
+					firstAnimate.left = 0;
+					startBlockCss.paddingLeft = options.$this.width();
+					secondAnimate.paddingLeft = block.css('paddingLeft');
+				}
+			}
+
+			setColors(block, params)
+			.css(startBlockCss)
+			.animate(firstAnimate,{duration:options.captionDuration*0.8,easing:'easeInQuad'})
+			.animate(secondAnimate, options.captionDuration*0.8, 'easeOutQuad', function(){
+				unsetColors($(this)).css({
+					height: '',
+					width: '',
+					overflow: '',
+					top: '',
+					left: '',
+					paddingLeft: ''
+				});
+			});
+		}
+
+		caption.parent().css({
+			position: 'absolute',
+			top: 0,
+			left: 0,
+			right: 0,
+			bottom: 0,
+			overflow: 'hidden'
+		});
+
+		var waiting = options.noDelay?0:(options.duration / 2 - options.captionDuration / 1.5);
+		if(waiting < 0) {
+			waiting = 0;
+		}
+
+		// hide old title
+		caption.stop(1,1).delay(waiting).fadeOut(options.captionDuration/3);
+
+		// show new title
+		if(title) {
+			if(captionTimeout) {
+				clearTimeout(captionTimeout);
+			}
+			captionTimeout = setTimeout(function() {
+				caption.stop(1,1).html(title);
+
+				var els = caption.find('>span,>div').get();
+
+				// start state
+				$(els).css({position:'relative',visibility:'hidden',verticalAlign: 'top',overflow:'hidden'});
+				caption.show();
+
+				// start animate
+				animateDescr($(els[0]), params[0]);
+
+				setTimeout(function() {
+					animateDescr($(els[1]), params[1]);
+				}, options.captionDuration*0.3);
+			}, options.noDelay?0:(options.duration / 2 + waiting));
+		}
+	}
+}());

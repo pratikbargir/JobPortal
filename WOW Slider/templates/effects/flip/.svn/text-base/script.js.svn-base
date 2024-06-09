@@ -1,0 +1,322 @@
+// flip
+// options.rows - row count <height, >0, height/30 by default
+// options.cols - cols count <width, >0, width/90 by default
+// options.type - effect type (0- parallel lines, 1- snake from center, random by default)
+// cloned from http://www.idangero.us/cs/	"2d multi" 0,1,13,14	
+function ws_flip(options, images, aCont){
+	var $ = jQuery;
+	var $this = $(this);
+	var cols = options.cols || Math.round(options.width/90);
+	var rows = options.rows || Math.round(options.height/30);
+	
+	// create part content
+	var effectCont = $('<div>').addClass('ws_effect ws_flip').css({
+			position:'absolute',
+			left: 0,
+			top: 0,
+			width: '100%',
+			height:'100%',
+			transform: 'translate3d(0,0,0)'
+		}).appendTo(aCont);
+	
+	// create parts and define changing sequence 
+	var parts = [];
+	
+	// 0- parallel lines
+	// 1- snake from center
+	var ways_train=[cols*0.7, cols*2.5];
+	var ways_lines=[[],[]];
+	
+	function addPart(lines,part,i){ // add part to changing sequence 
+		if (!lines[i]) lines[i]=[];
+		lines[i][lines[i].length] = part;
+	};
+	
+	// create parts
+	for (var index=0; index<cols*rows; index++){
+		var i = index % cols,
+			j = Math.floor(index/cols);
+		
+		var part = parts[index] = document.createElement('div');
+		$(part).css({position:'absolute', overflow: 'hidden'})
+			.append($('<img>').css({
+				position: 'absolute',
+				top: 0,
+				left: 0
+			}))
+			.appendTo(effectCont);
+		
+		// calc objects line for changing sequence 
+		// lines 
+		addPart( ways_lines[0],part, 2*j+i ); 
+		// snakes
+		addPart( ways_lines[1],part, Math.abs(index-(cols*rows>>1)) ); 
+	};
+	
+	
+	function initPos(){
+		var cwidth = effectCont.width();
+		var cheight = effectCont.height();
+		// create parts
+		for (var index=0; index<cols*rows; index++){
+			var i = index % cols,
+				j = Math.floor(index/cols);
+			var left0 = Math.round(cwidth * (i)/cols),
+				top0  = Math.round(cheight * (j)/rows),
+				width = Math.round(cwidth * (i+1)/cols)-left0,
+				height  = Math.round(cheight * (j+1)/rows)-top0;
+			
+			$(parts[index]).css({
+					width: width+'px',
+					height: height+'px',
+					left: left0+'px',
+					top: top0+'px'
+				}).data({
+					width:width,
+					height:height
+				});
+		};		
+	}
+	
+	
+	function flipIn(obj, duration, complete){
+		if (!options.support.transform)// transform no support
+			obj.each(function(i,obj){
+				obj=$(obj);
+				obj.animate({width:obj.data('width')*0.8+'px', height:0}, {easing:'easeInOutCubic', duration:duration, complete:complete});
+			});
+		else
+			obj.animate({scaleX:0.8, scaleY:-1}, {easing:'easeInOutCubic', duration:duration, complete: complete});
+	}
+	
+	function flipOut(obj, duration, complete){
+		if (!options.support.transform)// transform no support
+			obj.each(function(i,obj){
+				obj=$(obj);
+				obj.animate({width:obj.data('width')+'px', height:obj.data('height')+'px'}, {easing:'easeInOutCubic', duration:duration, complete: complete});
+			});
+		else
+			obj.animate({scaleX:1, scaleY:1}, {easing:'easeInOutCubic',  duration:duration, complete: function(){
+				obj.css({'-o-transform':'none'});	
+				if (complete) complete();
+			}});
+	}
+	
+	var busy;
+	this.go = function(new_index, curIdx){
+		if (busy) return -1;
+		busy = 1;
+		initPos();
+		
+		var nWay = ('type' in options)? options.type: Math.round(Math.random()*(ways_lines.length-1));
+		
+
+		var imgParams = $(images.get(curIdx));
+			imgParams = {
+				width: imgParams.width(),
+				height: imgParams.height(),
+				marginTop: parseFloat(imgParams.css('marginTop')),
+				marginLeft: parseFloat(imgParams.css('marginLeft'))
+			};
+		var partWidth = aCont.width()/cols,
+			partHeight = aCont.height()/rows;
+
+
+		$(parts).stop(1,1).css({
+			opacity: 1,
+			'z-index':3
+		})
+		.find('img').attr('src', images.get(curIdx).src)
+		.css(imgParams)
+		.each(function(index){
+			var i = index % cols,
+				j = Math.floor(index/cols);
+
+			$(this).css({
+				left: -partWidth*i,
+				top: -partHeight*j
+			});
+		});
+
+
+		
+		effectCont.show();
+		var ul = $('.ws_list',aCont);
+		ul.find('img').css({visibility:'hidden'});
+		
+		// start effect for each partLine
+		var lines = ways_lines[nWay];
+		var train = Math.round(ways_train[nWay]);
+		var	partDelay = options.duration*0.90 / (lines.length+2*train); // delay start between lines, off 10% of duration for starting animations
+		var flipDuration = partDelay*train; // duration of flip
+		if (options.support.transform) flipDuration /= 2; // !ie have delay between flip
+		
+		// this function start lines.length+train times
+		// flipIn=flipDuration | pause=partDelay*train-flipDuration | flipOut=flipDuration
+		// = partDelay * (lines.length + train) + partDelay*train/?2 = options.duration
+		var	index = 0;
+		function startLine(){
+			// flip in
+			if (index<lines.length) flipIn($(lines[index]), flipDuration);
+			
+			// flip out
+			var outIndex = index-train;
+			if (outIndex>=0 && outIndex<lines.length){
+				var obj = $(lines[outIndex]);
+				
+				var complete;
+				if (outIndex >= lines.length-1)
+					complete = function(){
+						if (busy){
+							ul.find('img').css({visibility:'visible'});
+							$this.trigger('effectEnd');
+							effectCont.hide();
+							busy = 0;
+						}
+					}
+				
+				flipOut(obj, flipDuration, complete);
+				obj.find('img').attr('src', images.get(new_index).src);
+			}
+
+			index++;
+			if (index - train < lines.length)
+				setTimeout( startLine, partDelay );
+		}
+		
+		startLine();
+	}
+}
+
+jQuery.extend(jQuery.easing,
+{
+/*	def: 'easeOutQuad',
+	swing: function (x, t, b, c, d) {
+		//alert($.easing.default);
+		return $.easing[$.easing.def](x, t, b, c, d);
+	},
+	easeInQuad: function (x, t, b, c, d) {
+		return c*(t/=d)*t + b;
+	},
+	easeOutQuad: function (x, t, b, c, d) {
+		return -c *(t/=d)*(t-2) + b;
+	},
+	easeInOutQuad: function (x, t, b, c, d) {
+		if ((t/=d/2) < 1) return c/2*t*t + b;
+		return -c/2 * ((--t)*(t-2) - 1) + b;
+	},
+	easeInCubic: function (x, t, b, c, d) {
+		return c*(t/=d)*t*t + b;
+	},
+	easeOutCubic: function (x, t, b, c, d) {
+		return c*((t=t/d-1)*t*t + 1) + b;
+	},*/
+	easeInOutCubic: function (x, t, b, c, d) {
+		if ((t/=d/2) < 1) return c/2*t*t*t + b;
+		return c/2*((t-=2)*t*t + 2) + b;
+	}/*,
+	easeInQuart: function (x, t, b, c, d) {
+		return c*(t/=d)*t*t*t + b;
+	},
+	easeOutQuart: function (x, t, b, c, d) {
+		return -c * ((t=t/d-1)*t*t*t - 1) + b;
+	},
+	easeInOutQuart: function (x, t, b, c, d) {
+		if ((t/=d/2) < 1) return c/2*t*t*t*t + b;
+		return -c/2 * ((t-=2)*t*t*t - 2) + b;
+	},
+	easeInQuint: function (x, t, b, c, d) {
+		return c*(t/=d)*t*t*t*t + b;
+	},
+	easeOutQuint: function (x, t, b, c, d) {
+		return c*((t=t/d-1)*t*t*t*t + 1) + b;
+	},
+	easeInOutQuint: function (x, t, b, c, d) {
+		if ((t/=d/2) < 1) return c/2*t*t*t*t*t + b;
+		return c/2*((t-=2)*t*t*t*t + 2) + b;
+	},
+	easeInSine: function (x, t, b, c, d) {
+		return -c * Math.cos(t/d * (Math.PI/2)) + c + b;
+	},
+	easeOutSine: function (x, t, b, c, d) {
+		return c * Math.sin(t/d * (Math.PI/2)) + b;
+	},
+	easeInOutSine: function (x, t, b, c, d) {
+		return -c/2 * (Math.cos(Math.PI*t/d) - 1) + b;
+	},
+	easeInExpo: function (x, t, b, c, d) {
+		return (t==0) ? b : c * Math.pow(2, 10 * (t/d - 1)) + b;
+	},
+	easeOutExpo: function (x, t, b, c, d) {
+		return (t==d) ? b+c : c * (-Math.pow(2, -10 * t/d) + 1) + b;
+	},
+	easeInOutExpo: function (x, t, b, c, d) {
+		if (t==0) return b;
+		if (t==d) return b+c;
+		if ((t/=d/2) < 1) return c/2 * Math.pow(2, 10 * (t - 1)) + b;
+		return c/2 * (-Math.pow(2, -10 * --t) + 2) + b;
+	},
+	easeInCirc: function (x, t, b, c, d) {
+		return -c * (Math.sqrt(1 - (t/=d)*t) - 1) + b;
+	},
+	easeOutCirc: function (x, t, b, c, d) {
+		return c * Math.sqrt(1 - (t=t/d-1)*t) + b;
+	},
+	easeInOutCirc: function (x, t, b, c, d) {
+		if ((t/=d/2) < 1) return -c/2 * (Math.sqrt(1 - t*t) - 1) + b;
+		return c/2 * (Math.sqrt(1 - (t-=2)*t) + 1) + b;
+	},
+	easeInElastic: function (x, t, b, c, d) {
+		var s=1.70158;var p=0;var a=c;
+		if (t==0) return b;  if ((t/=d)==1) return b+c;  if (!p) p=d*.3;
+		if (a < Math.abs(c)) { a=c; var s=p/4; }
+		else var s = p/(2*Math.PI) * Math.asin (c/a);
+		return -(a*Math.pow(2,10*(t-=1)) * Math.sin( (t*d-s)*(2*Math.PI)/p )) + b;
+	},
+	easeOutElastic: function (x, t, b, c, d) {
+		var s=1.70158;var p=0;var a=c;
+		if (t==0) return b;  if ((t/=d)==1) return b+c;  if (!p) p=d*.3;
+		if (a < Math.abs(c)) { a=c; var s=p/4; }
+		else var s = p/(2*Math.PI) * Math.asin (c/a);
+		return a*Math.pow(2,-10*t) * Math.sin( (t*d-s)*(2*Math.PI)/p ) + c + b;
+	},
+	easeInOutElastic: function (x, t, b, c, d) {
+		var s=1.70158;var p=0;var a=c;
+		if (t==0) return b;  if ((t/=d/2)==2) return b+c;  if (!p) p=d*(.3*1.5);
+		if (a < Math.abs(c)) { a=c; var s=p/4; }
+		else var s = p/(2*Math.PI) * Math.asin (c/a);
+		if (t < 1) return -.5*(a*Math.pow(2,10*(t-=1)) * Math.sin( (t*d-s)*(2*Math.PI)/p )) + b;
+		return a*Math.pow(2,-10*(t-=1)) * Math.sin( (t*d-s)*(2*Math.PI)/p )*.5 + c + b;
+	},
+	easeInBack: function (x, t, b, c, d, s) {
+		if (s == undefined) s = 1.70158;
+		return c*(t/=d)*t*((s+1)*t - s) + b;
+	},
+	easeOutBack: function (x, t, b, c, d, s) {
+		if (s == undefined) s = 1.70158;
+		return c*((t=t/d-1)*t*((s+1)*t + s) + 1) + b;
+	},
+	easeInOutBack: function (x, t, b, c, d, s) {
+		if (s == undefined) s = 1.70158;
+		if ((t/=d/2) < 1) return c/2*(t*t*(((s*=(1.525))+1)*t - s)) + b;
+		return c/2*((t-=2)*t*(((s*=(1.525))+1)*t + s) + 2) + b;
+	},
+	easeInBounce: function (x, t, b, c, d) {
+		return c - $.easing.easeOutBounce (x, d-t, 0, c, d) + b;
+	},
+	easeOutBounce: function (x, t, b, c, d) {
+		if ((t/=d) < (1/2.75)) {
+			return c*(7.5625*t*t) + b;
+		} else if (t < (2/2.75)) {
+			return c*(7.5625*(t-=(1.5/2.75))*t + .75) + b;
+		} else if (t < (2.5/2.75)) {
+			return c*(7.5625*(t-=(2.25/2.75))*t + .9375) + b;
+		} else {
+			return c*(7.5625*(t-=(2.625/2.75))*t + .984375) + b;
+		}
+	},
+	easeInOutBounce: function (x, t, b, c, d) {
+		if (t < d/2) return $.easing.easeInBounce (x, t*2, 0, c, d) * .5 + b;
+		return $.easing.easeOutBounce (x, t*2-d, 0, c, d) * .5 + c*.5 + b;
+	}*/
+});

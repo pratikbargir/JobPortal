@@ -1,0 +1,286 @@
+/*	---- youtube/vimeo video control ----
+*
+*	wowsliderVideo.start(k) - init video (play if autoplay enabled) in slide k
+*	wowsliderVideo.check(k) - check if slide k have video and return ['youtube', 'vimeo', false],
+*	wowsliderVideo.pause(k, callback) - pause video into slide k and call callback after end animation
+*	wowsliderVideo.play(k, force, callback) - play video into slide k if autoplay enabled 
+					(or force = true) and call callback after end animation
+*	wowsliderVideo.playing() - return videoPlaying var [vimeo, youtube, false]
+*
+*	use iframe attributes:
+*	autoplay -> data-autoplay-video
+*
+*	youtube play states:
+*	-1 – unstarted
+*	0 – ended
+*	1 – playing
+*	2 – paused
+*	3 – buffering
+*	5 – video cued
+*/
+function wowsliderVideo($this, options, hideEffectCont) {
+	var $ = jQuery;
+	// slider elements
+	var videoBtn = $('.ws_video_btn', $this);
+	var pp_button = $('.ws_playpause', $this);
+	var caption = $('.ws-title-wrapper', $this);
+	var wsFrame = $('.ws_frame', $this);
+	var coverParent = $('.ws_cover', $this);
+	var elements = $('ul li', $this);
+	var ul = $('.ws_list', $this);
+
+	// mod vars
+	var playersList = {}; // playersList[id] = api of current video
+	var videoPlaying; // [vimeo, youtube, false]
+	var youtubeApiReady, vimeoApiReady; // bool
+
+	// get iframe object
+	function getIframe(k) {
+		/* NO USE IT... because once YouTube changed the api and all sliders video stopped working ...
+
+		if(playersList[k])
+			return $(playersList[k].a || playersList[k].element);
+		else
+		*/
+			return $('iframe', elements[k]);
+	}
+
+	// check player
+	// return 'vimeo'/'youtube'
+	function checkVendor(k) {
+		var src = getIframe(k);
+			src = src[0]?src[0].src:'';
+
+		return /youtube/.test(src)?'youtube':(/vimeo/.test(src)?'vimeo':false);
+	}
+
+	// show/hide video play button (+ hide/show slider play button)
+	function showBtn(k) {
+		// show video play button
+		videoBtn.removeClass('ws_vimeo ws_youtube').addClass('ws_'+checkVendor(k));
+
+		// hide slider play button
+		if(pp_button) pp_button.addClass('ws_hide');
+	}
+	function hideBtn(show_pp) {
+		// hide video play button
+		videoBtn.removeClass('ws_vimeo ws_youtube');
+
+		// show slider play button
+		if(show_pp && pp_button) pp_button.removeClass('ws_hide');
+	}
+
+	// pause video
+	function pauseVideo(k, callback) {
+		var iframe = getIframe(k);
+
+		videoPlaying = false;
+		$this[0].wsRestart();
+
+		if(iframe[0] && playersList[k]) {
+			// remove class when video playing (need to hide controls)
+			// IE fix because it don't show controls on hover if frame visible
+			if(/MSIE|Trident/.test(navigator.userAgent))
+				$this.removeClass('ws_video_playing_ie');
+			else
+				$this.removeClass('ws_video_playing');
+
+			// show ws_frame
+			wsFrame.show();
+			if(coverParent) coverParent.show();
+
+			// show description
+			caption.fadeIn(300);
+
+			// show video play button
+			showBtn(k);
+
+			// pause youtube
+			if(checkVendor(k) == 'youtube' && playersList[k].getPlayerState && playersList[k].getPlayerState() == 1)
+				playersList[k].pauseVideo();
+			
+			// pause vimeo
+			else if(checkVendor(k) == 'vimeo')
+				// check if already paused
+				playersList[k].api('paused', function (paused) {
+                    if(!paused) playersList[k].api('pause');
+                });
+
+			// hide button if callback
+			if(callback) hideBtn(1);
+
+			// hide iframe
+			if(iframe.css('opacity') > 0)
+				iframe.animate({
+					opacity: 0
+				}, 500, callback?callback:0);
+			else if (callback)
+				callback();
+		}
+		else if (callback)
+			callback();
+	}
+
+	// play video
+	function playVideo(k, force, callback) {
+		var iframe = getIframe(k);
+
+		if(iframe[0] && (force || iframe.attr('data-autoplay-video') || options.autoPlayVideo)) {
+			videoPlaying = checkVendor(k);
+
+			// add class when video playing (need to hide controls)
+			// IE fix because it don't show controls on hover if frame visible
+			if(/MSIE|Trident/.test(navigator.userAgent))
+				$this.addClass('ws_video_playing_ie');
+			else
+				$this.addClass('ws_video_playing');
+
+			// show slides list if hidden
+			ul.css('opacity', 1);
+
+			// stop slider
+			$this[0].wsStop();
+			
+			// hide description
+			caption.fadeOut(300);
+
+			// hide container with effect
+			hideEffectCont();
+
+			// hide ws_frame
+			wsFrame.hide();
+			if(coverParent) coverParent.hide();
+
+			// only hide video play button
+			hideBtn();
+
+			// play youtube
+			if(videoPlaying == 'youtube' && playersList[k] && playersList[k].playVideo)
+				playersList[k].playVideo();
+			
+			// play vimeo
+			else if(videoPlaying == 'vimeo' && playersList[k])
+				playersList[k].api('play');
+				
+
+			// show iframe
+			if(iframe.css('opacity') < 1)
+				iframe.css('zIndex', 1).animate({
+					opacity: 1
+				}, 500, callback?callback:0);
+			else if (callback)
+				callback();
+		}
+		else if (callback)
+			callback();
+	}
+
+	// init youtube player
+	function initYoutubePlayer(k, iframe) {
+		// stop slider if autoplay video
+		if(iframe.attr('data-autoplay-video') || options.autoPlayVideo) {
+			videoPlaying = 'youtube';
+			$this[0].wsStop();
+		}
+
+		playersList[k] = new YT.Player(iframe[0], {
+			events: {
+				onStateChange: function(state) {
+					// stop slider, when video start playing
+					if(state.data == 1 || state.data == 3)
+						playVideo(k, 1);
+					// restart slider, when video paused/finished
+					else if((state.data == 2 || state.data == 0) && videoPlaying == 'youtube')
+						pauseVideo(k);
+				},
+				onReady: function(player) {
+					iframe.css.zIndex = 1;
+					// play video on ready
+					playVideo(k);
+				}
+			}
+		});
+	}
+
+	// init vimeo player
+	function initVimeoPlayer(k, iframe) {
+		// stop slider if autoplay video
+		if(iframe.attr('data-autoplay-video') || options.autoPlayVideo) {
+			videoPlaying = 'vimeo';
+			$this[0].wsStop();
+		}
+
+		playersList[k] = $f(iframe[0]);
+
+		playersList[k].addEvent('ready', function(x) {
+			iframe.css.zIndex = 1;
+
+			// stop slider, when video start playing
+			playersList[k].addEvent('play', function(){
+				playVideo(k, 1);
+			});
+
+			// restart slider, when video paused/finished
+			playersList[k].addEvent('pause', function(){
+				if(videoPlaying == 'vimeo')
+					pauseVideo(k);
+			});
+			playersList[k].addEvent('finish', function(){
+				if(videoPlaying == 'vimeo')
+					pauseVideo(k);
+			});
+
+			// play video on ready
+			playVideo(k);
+		})
+	}
+
+	// start
+	var start = function(curIdx) {
+		var iframe = getIframe(curIdx);
+
+		// pause all players
+		if(videoPlaying) {
+			videoPlaying = false;
+			for(var k in playersList)
+				if(k != curIdx) pauseVideo(k);
+		}
+
+		// if cur slide with iframe
+		if(iframe[0]) {
+			showBtn(curIdx);
+
+			// check cached currently player and play video
+			if(playersList[curIdx]) {
+				playVideo(curIdx);
+			}
+			// init player if no cached and if api ready
+			else {
+				// youtube
+				if(youtubeApiReady && checkVendor(curIdx) == 'youtube')
+					initYoutubePlayer(curIdx, iframe);
+
+				// vimeo
+				else if(vimeoApiReady && checkVendor(curIdx) == 'vimeo')
+					initVimeoPlayer(curIdx, iframe);
+			}
+		} else {
+			hideBtn(true);
+		}
+	}
+
+	// set public functions
+	this.start = start;
+	this.check = checkVendor;
+	this.pause = pauseVideo;
+	this.play = playVideo;
+	this.playing = function() {
+		return videoPlaying;
+	};
+	this.vimeo = function(status) {
+		vimeoApiReady = status;
+	}
+	this.youtube = function(status) {
+		youtubeApiReady = status;
+	}
+};

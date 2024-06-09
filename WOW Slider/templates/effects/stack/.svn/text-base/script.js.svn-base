@@ -1,0 +1,100 @@
+// stack 
+// options.revers - change the direction of transition
+// options.fadeOut - fade out old image
+function ws_stack(options,images,container){
+	var $ = jQuery;
+	var $this = $(this);
+	var elems = $('li',container);
+	var effectCont = $('<div>').addClass('ws_effect ws_stack').css({
+		position: 'absolute',
+		top: 0,
+		left: 0,
+		width: '100%',
+		height: '100%',
+		overflow: 'hidden'
+	}).appendTo(container);
+
+	this.go = function(new_index,curIdx,dir){
+		var outPos = (options.revers?1:-1)*container.width();
+		
+		// at this time all image have z-index <=4 (basicaly=0)
+		elems.each(function(Index){
+			if(dir && Index!=curIdx) this.style.zIndex = ( Math.max(0, this.style.zIndex-1) ); // down all image but current
+			//????if(!dir && Index!=curIdx) this.style.zIndex = ( Math.min(4, this.style.zIndex+1) ); // down all image but current
+		});
+		
+		var ul = $('.ws_list',container);
+
+		var hiImg = $('<div>').css({
+					position:'absolute',
+					left: 0,
+					top: 0,
+					width: '100%',
+					height: '100%',
+					overflow: 'hidden',
+					zIndex:4
+				})
+				.append($(images.get(dir?new_index:curIdx)).clone()),
+			backImg = $('<div>').css({
+					position:'absolute',
+					left: 0,
+					top: 0,
+					width: '100%',
+					height: '100%',
+					overflow: 'hidden',
+					zIndex:4
+				})
+				.append($(images.get(dir?curIdx:new_index)).clone());
+
+        if(options.responsive < 3) {
+            hiImg.find('img').css('width', '100%');
+            backImg.find('img').css('width', '100%');
+        }
+
+		if (dir) {
+			 backImg.appendTo(effectCont);
+			 hiImg.appendTo(effectCont);
+		}
+		else {
+			 hiImg.insertAfter(ul);
+			 backImg.insertAfter(ul);
+		}
+		
+		if (!dir){
+			ul.stop(true,true).hide().css({left:-new_index+"00%"});
+			if (options.fadeOut) ul.fadeIn(options.duration);
+			else ul.show();
+		}
+		else{
+			if (options.fadeOut) ul.fadeOut(options.duration);
+		};
+
+		// prepare for animation
+		var from1 = { left: dir?outPos:0 };
+		var from2 = { left: dir?0:-outPos*0.5 };
+		var to1 = { left: dir?0:outPos };
+		var to2 = { left: (dir?1:0)*container.width()*0.5 };
+
+        if(options.support.transform) {
+			from1 = { translate: [from1.left, 0, 0] };
+			from2 = { translate: [from2.left, 0, 0] };
+			to1 = { translate: [to1.left, 0, 0] };
+			to2 = { translate: [to2.left, 0, 0] };
+        }
+		
+		// start animation
+		wowAnimate(hiImg,
+			from1, to1, options.duration, options.duration*(dir?0:0.1),
+			'easeInOutExpo',
+			function() {
+				$this.trigger('effectEnd');
+				hiImg.remove();
+				backImg.remove();
+			}
+		);
+		wowAnimate(backImg,
+			from2, to2, options.duration,
+			options.duration*(dir?0.1:0), 'easeInOutExpo'
+		);
+	}
+};

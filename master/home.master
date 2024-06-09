@@ -1,0 +1,222 @@
+﻿<%@ Master Language="C#" AutoEventWireup="true"  CodeFile="home.master.cs" Inherits="master_home"  Debug ="true"%>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head runat="server">
+    <title>Untitled Page</title>
+    
+    <link rel="stylesheet" type="text/css" href="engine1/style.css" />
+	<script type="text/javascript" src="engine1/jquery.js"></script>
+	
+
+	
+    <asp:ContentPlaceHolder id="head" runat="server">
+    </asp:ContentPlaceHolder>
+    <style type="text/css">
+         .style1
+        {
+            width: 100%;
+            height: 100%;
+            border: 1px solid #000000;
+        }
+        .style2
+        {
+            height: 8px;
+            font-size: xx-small;
+        }
+        .style13
+        {
+            width: 100%;
+            background-color: #800000;
+        }
+        .style13
+        {
+            font-size: 10pt;
+        }
+        .style14
+        {
+            width: 5px;
+        }
+    </style>
+</head>
+<body>
+    <form id="form1" runat="server">
+    <table cellspacing="0" class="style1">
+    <tr>
+            <td class="style2" bgcolor="Maroon" colspan="8">
+            </td>
+        </tr>
+        <tr>
+            <td rowspan="2" style="text-align: center" class="style14">
+                <asp:Image ID="Image3" runat="server" Height="50px" 
+                    ImageUrl="~/images/joblogo.png" Width="319px" />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+            </td>
+            <td style="text-align: center">
+                <asp:Image ID="Image4" runat="server" Height="25px" 
+                    ImageUrl="~/images/homeicon.png" />
+            </td>
+            <td style="text-align: center">
+                <asp:Image ID="Image5" runat="server" Height="25px" 
+                    ImageUrl="~/images/about1icon.png" />
+            </td>
+            <td style="text-align: center">
+                <asp:Image ID="Image6" runat="server" Height="25px" 
+                    ImageUrl="~/images/servicesicon.png" />
+            </td>
+            <td style="text-align: center">
+                <asp:Image ID="Image7" runat="server" Height="25px" 
+                    ImageUrl="~/images/sitemapicon.png" />
+            </td>
+            <td style="text-align: center">
+                <asp:Image ID="Image10" runat="server" Height="25px" 
+                    ImageUrl="~/images/coicon.png" />
+            </td>
+            <td style="text-align: center">
+                <asp:Image ID="Image9" runat="server" Height="25px" 
+                    ImageUrl="~/images/loginicon.jpg" />
+            </td>
+            <td rowspan="2">
+                <asp:Button ID="Button1" runat="server" AccessKey="h" BackColor="White" 
+                    BorderStyle="None" ForeColor="White" onclick="Button1_Click" 
+                    PostBackUrl="~/admin/adminlogin.aspx" Text="h" />
+            </td>
+        </tr>
+        <tr>
+            <td style="text-align: center">
+                <asp:HyperLink ID="HyperLink3" runat="server" Font-Bold="True" 
+                    Font-Names="Arial" ForeColor="Black" NavigateUrl="~/master/Homepage.aspx">Home</asp:HyperLink>
+            </td>
+            <td style="text-align: center">
+                <asp:HyperLink ID="HyperLink6" runat="server" Font-Bold="True" 
+                    Font-Names="Arial" ForeColor="Black" NavigateUrl="~/master/About us.aspx">About</asp:HyperLink>
+            </td>
+            <td style="text-align: center">
+                <asp:HyperLink ID="HyperLink7" runat="server" Font-Bold="True" 
+                    Font-Names="Arial" ForeColor="Black" NavigateUrl="~/master/Services.aspx">Services</asp:HyperLink>
+            </td>
+            <td style="text-align: center">
+                <asp:HyperLink ID="HyperLink8" runat="server" Font-Bold="True" 
+                    Font-Names="Arial" ForeColor="Black" NavigateUrl="~/master/SiteMap.aspx">Sitemap</asp:HyperLink>
+            </td>
+            <td style="text-align: center">
+                <asp:HyperLink ID="HyperLink9" runat="server" Font-Bold="True" 
+                    Font-Names="Arial" ForeColor="Black" 
+                    NavigateUrl="~/master/Get In Touch.aspx">Contact</asp:HyperLink>
+            </td>
+            <td style="text-align: center">
+                <asp:HyperLink ID="HyperLink10" runat="server" Font-Bold="True" 
+                    Font-Names="Arial" ForeColor="Black" 
+                    NavigateUrl="~/candidateLogin/CandidateLogin.aspx">Login</asp:HyperLink>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="8">
+                
+                  <table align="center" cellpadding="10" cellspacing="0" class="style13" 
+                     style="border-style: solid none none none; border-width: thick; border-color: #FF3300">
+                    <tr>
+                        <td style="font-family: Arial, Helvetica, sans-serif; font-size: medium; font-weight: bold; color: #FFFFFF" 
+                            align="center" height="16" valign="top">
+                            <asp:Menu ID="Menu3" runat="server" BackColor="Maroon" ForeColor="White" 
+                                Orientation="Horizontal" Width="100%" style="" 
+                                Height="20px" onmenuitemclick="Menu3_MenuItemClick">
+                                <DynamicHoverStyle BackColor="#CC0000" />
+                                <DynamicMenuStyle BackColor="Maroon" />
+                                <DynamicMenuItemStyle HorizontalPadding="10px" VerticalPadding="3px" 
+                                    Width="240px" />
+                                <StaticHoverStyle BackColor="#CC0000" Font-Bold="True" 
+                                    Font-Names="Arial Rounded MT Bold" ForeColor="White" />
+                                <Items>
+                                    <asp:MenuItem Text="All Jobs " Value="All Jobs " 
+                                        NavigateUrl="~/master/All Jobs.aspx"></asp:MenuItem>
+                                    <asp:MenuItem Text="Job By Category" Value="Job By Category">
+                                        <asp:MenuItem Text="IT" Value="IT"></asp:MenuItem>
+                                        <asp:MenuItem Text="Marketing" Value="Marketing"></asp:MenuItem>
+                                        <asp:MenuItem Text="HR" Value="HR"></asp:MenuItem>
+                                        <asp:MenuItem Text="Sales" Value="Sales"></asp:MenuItem>
+                                        <asp:MenuItem Text="Lecturer" Value="Lecturer"></asp:MenuItem>
+                                    </asp:MenuItem>
+                                    <asp:MenuItem Text="Job By Location" Value="Job By Location">
+                                        <asp:MenuItem Text="Pune" Value="Pune"></asp:MenuItem>
+                                        <asp:MenuItem Text="Mumbai" Value="Mumbai"></asp:MenuItem>
+                                        <asp:MenuItem Text="Banglore" Value="Banglore"></asp:MenuItem>
+                                        <asp:MenuItem Text="Hyderabad" Value="Hyderabad"></asp:MenuItem>
+                                    </asp:MenuItem>
+                                    <asp:MenuItem Text="Job By Desingnation" Value="Job By Designation">
+                                        <asp:MenuItem Text="Manager" Value="Manager"></asp:MenuItem>
+                                        <asp:MenuItem Text="Assistant Manager" Value="Assistant Manager"></asp:MenuItem>
+                                        <asp:MenuItem Text="Trainee" Value="Trainee"></asp:MenuItem>
+                                        <asp:MenuItem Text="Developer" Value="Developer"></asp:MenuItem>
+                                        <asp:MenuItem Text="Tester" Value="Tester"></asp:MenuItem>
+                                        <asp:MenuItem Text="SalesMan" Value="SalesMan"></asp:MenuItem>
+                                    </asp:MenuItem>
+                                    <asp:MenuItem Text="Job By Company" Value="Job By Company" 
+                                        NavigateUrl="~/master/By Company.aspx">
+                                        <asp:MenuItem Text="ACN" Value="ACN"></asp:MenuItem>
+                                        <asp:MenuItem Text="Amway" Value="Amway"></asp:MenuItem>
+                                        <asp:MenuItem Text="Oriflame" Value="Oriflame"></asp:MenuItem>
+                                        <asp:MenuItem Text="TCS" Value="TCS"></asp:MenuItem>
+                                        <asp:MenuItem Text="Wipro" Value="Wipro"></asp:MenuItem>
+                                        <asp:MenuItem Text="Infosys" Value="Infosys"></asp:MenuItem>
+                                        <asp:MenuItem Text="NatureShine" Value="NatureShine"></asp:MenuItem>
+                                    </asp:MenuItem>
+                                </Items>
+                            </asp:Menu>
+                        </td>
+                         </tr>
+                    </table>
+                
+                
+             </td>
+        </tr>
+          <tr>
+            <td colspan="8">
+                <asp:ContentPlaceHolder ID="ContentPlaceHolder1" runat="server">
+                </asp:ContentPlaceHolder>
+            </td>
+        </tr>
+       
+        <tr>
+            <td colspan="8">
+                
+                <marquee behavior="alternate" width="100%" scrollamount="5" style="background-color: #FFFFFF">
+               <table><tr>
+               <td><a href="infosys.aspx"><img src="../imagesproject/infosys.png" height="50" width="80"  border=1/></a>
+               <td><a href="wipro.aspx"><img src="../imagesproject/wipro.png" height="50" width="80"  border=1/></a>
+               <td><a href="tcs.aspx"><img src="../imagesproject/tata.png" height="50" width="80"  border=1/></a>
+               <td><a href="oriflame.aspx"><img src="../imagesproject/oriflame.jpg" height="50" width="80"  border=1/></a>
+               <td><a href="natureshine.aspx"><img src="../imagesproject/natureshine.jpg" height="50" width="80"  border=1/></a>
+               <td><a href="amway.aspx"><img src="../imagesproject/amway.jpg" height="50" width="80"  border=1/></a>
+               <td><a href="acn.aspx"><img src="../imagesproject/acn.jpg" height="50" width="80"  border=1/></a>
+               
+                              
+               <td><a href="amway.aspx"><img src="../imagesproject/amway.jpg" height="50" width="80"  border=1/></a>
+               <td><a href="natureshine.aspx"><img src="../imagesproject/natureshine.jpg" height="50" width="80"  border=1/></a>
+               <td><a href="oriflame.aspx"><img src="../imagesproject/oriflame.jpg" height="50" width="80"  border=1/></a>
+               <td><a href="tcs.aspx"><img src="../imagesproject/tata.png" height="50" width="80"  border=1/></a>
+               <td><a href="wipro.aspx"><img src="../imagesproject/wipro.png" height="50" width="80"  border=1/></a>
+               <td><a href="infosys.aspx"><img src="../imagesproject/infosys.png" height="50" width="80"  border=1/></a>
+               <td><a href="oriflame.aspx"><img src="../imagesproject/oriflame.jpg" height="50" width="80"  border=1/></a>
+               <td><a href="tcs.aspx"><img src="../imagesproject/tata.png" height="50" width="80"  border=1/></a>
+               <td><a href="wipro.aspx"><img src="../imagesproject/wipro.png" height="50" width="80"  border=1/></a>
+               <td><a href="infosys.aspx"><img src="../imagesproject/infosys.png" height="50" width="80"  border=1/></a>
+               <td><a href="oriflame.aspx"><img src="../imagesproject/oriflame.jpg" height="50" width="80"  border=1/></a>
+               <td><a href="tcs.aspx"><img src="../imagesproject/tata.png" height="50" width="80"  border=1/></a>
+               <td><a href="wipro.aspx"><img src="../imagesproject/wipro.png" height="50" width="80"  border=1/></a>
+               <td><a href="infosys.aspx"><img src="../imagesproject/infosys.png" height="50" width="80"  border=1/></a>
+               
+               
+               </marquee>         
+                       
+                            
+               
+               </td>
+        </tr>    </table></td>
+        </tr>
+</table>
+    </form>
+    </form>
+<p>
+    &nbsp;</p>
+</body>
+</html>

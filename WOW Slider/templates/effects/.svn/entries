@@ -1,0 +1,145 @@
+8
+
+dir
+2614
+svn://media/DeluxeGallery/VisualKarusel/trunk/skeleton/templates/effects
+svn://media/DeluxeGallery
+
+
+
+2015-11-23T13:07:48.945581Z
+2611
+ncraager
+
+
+svn:special svn:externals svn:needs-lock
+
+
+
+
+
+
+
+
+
+
+
+ca4a4868-8302-f047-b98a-95392ef39609
+
+basic
+dir
+
+basic_linear
+dir
+
+blast
+dir
+
+blinds
+dir
+
+blur
+dir
+
+book
+dir
+
+brick
+dir
+
+bubbles
+dir
+
+carousel
+dir
+
+carousel_basic
+dir
+
+collage
+dir
+
+config.qs
+file
+
+
+
+
+2016-01-20T16:48:57.193000Z
+775d06e73dca71e64c74e55a0e997672
+2015-05-13T10:31:32.295525Z
+2569
+ncraager
+
+cube
+dir
+
+cube_over
+dir
+
+domino
+dir
+
+dribbles
+dir
+
+fade
+dir
+
+flip
+dir
+
+fly
+dir
+
+glass_parallax
+dir
+
+kenburns
+dir
+
+lines
+dir
+
+louvers
+dir
+
+overlay
+dir
+
+page
+dir
+
+parallax
+dir
+
+photo
+dir
+
+rotate
+dir
+
+seven
+dir
+
+shift
+dir
+
+slices
+dir
+
+squares
+dir
+
+stack
+dir
+
+stack_vertical
+dir
+
+turn
+dir
+
+tv
+dir
+

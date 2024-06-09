@@ -1,0 +1,124 @@
+﻿<%@ Master Language="C#" AutoEventWireup="true" CodeFile="adminmaster.master.cs" Inherits="admin_home" %>
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head runat="server">
+    <title>Untitled Page</title>
+    <asp:ContentPlaceHolder id="head" runat="server">
+    </asp:ContentPlaceHolder>
+    <style type="text/css">
+        .style3
+        {
+            font-family: Arial, Helvetica, sans-serif;
+            font-weight: bold;
+            font-size: large;
+        }
+        .style4
+        {
+            font-family: Arial, Helvetica, sans-serif;
+            font-weight: bold;
+            font-size: x-large;
+        }
+        .style5
+        {
+            font-size: x-large;
+        }
+    </style>
+</head>
+<body>
+    <form id="form1" runat="server">
+    
+    
+    
+    
+    
+    
+    
+    <table cellspacing="0" width="100%" border="1" 
+        style="border-style: solid; border-top-width: thick; border-color: #003399">
+        
+        <tr>
+            <td class="style14" style="text-align: left">
+                <asp:Image ID="Image3" runat="server" Height="50px" 
+                    ImageUrl="~/images/joblogo.png" Width="319px" />
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="style5"> </span>
+                <span class="style4">Welcome&nbsp;
+                <asp:Label ID="Label1" runat="server" Text="Label" style="color: #CC0000"></asp:Label>
+                &nbsp;To Admin</span><span class="style3">&nbsp; </span>
+                <span class="style4">Panel</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <asp:Label ID="Label2" runat="server" 
+                    style="font-weight: 700; font-size: large; font-family: Arial, Helvetica, sans-serif" 
+                    Text="Label"></asp:Label>
+            </td>
+        </tr>
+        <tr>
+            <td >
+                <table align="center" cellpadding="10" cellspacing="0" class="" width="100%" BackColor="#003399"
+                    style="border-style: solid none none none; border-width: thick; border-color: #FF3300">
+                    <tr>
+                        <td align="center" height="16" 
+                            style="font-family: Arial, Helvetica, sans-serif; font-size: medium; font-weight: bold; color: #FFFFFF" 
+                            valign="top" bgcolor="#003399">
+                            <asp:Menu ID="Menu1" runat="server" BackColor="#003399" ForeColor="White" 
+                                Orientation="Horizontal" Width="100%" 
+                                Height="20px" onmenuitemclick="Menu1_MenuItemClick">
+                                <DynamicHoverStyle BackColor="#CC0000" />
+                                <DynamicMenuStyle BackColor="Maroon" />
+                                <DynamicMenuItemStyle HorizontalPadding="10px" VerticalPadding="3px" 
+                                    Width="240px" />
+                                <StaticHoverStyle BackColor="#CC0000" Font-Bold="True" 
+                                    Font-Names="Arial Rounded MT Bold" ForeColor="White" />
+                                <Items>
+                                    <asp:MenuItem Text="Home" Value="Home" 
+                                        NavigateUrl="~/Report/jobReportSample.aspx"></asp:MenuItem>
+                                    <asp:MenuItem Text="Add Company" Value="Add Company" 
+                                        NavigateUrl="~/admin/Company.aspx"></asp:MenuItem>
+                                    <asp:MenuItem Text="Add Job" Value="Add Job" 
+                                        NavigateUrl="~/admin/Job.aspx"></asp:MenuItem>
+                                    <asp:MenuItem Text="Manage Candidate" Value="Manage Candidate" 
+                                        NavigateUrl="~/admin/ManageCandidate.aspx"></asp:MenuItem>
+                                    <asp:MenuItem Text="Change Password" Value="Change Password" 
+                                        NavigateUrl="~/admin/Change_Password.aspx"></asp:MenuItem>
+                                    <asp:MenuItem NavigateUrl="~/admin/CreateAdmin.aspx" Text="Add Admin" 
+                                        Value="Add Admin"></asp:MenuItem>
+                                    <asp:MenuItem Text="Report" Value="Report">
+                                        <asp:MenuItem NavigateUrl="~/Report/CandidateReport1.aspx" 
+                                            Text="Candidate Report" Value="Candidate Report"></asp:MenuItem>
+                                        <asp:MenuItem NavigateUrl="~/Report/CompanyReport.aspx" Text="Company Report" 
+                                            Value="Company Report"></asp:MenuItem>
+                                        <asp:MenuItem Text="Job Report" Value="Job Report" 
+                                            NavigateUrl="~/Report/JobReport.aspx"></asp:MenuItem>
+                                        <asp:MenuItem Text="Feedback Report" Value="Feedback Report" 
+                                            NavigateUrl="~/Report/feedbackreport.aspx"></asp:MenuItem>
+                                        <asp:MenuItem NavigateUrl="~/Report/Job Applied candidate Information.aspx" 
+                                            Text="Applied Jobs Report" Value="Applied Jobs Report"></asp:MenuItem>
+                                        <asp:MenuItem NavigateUrl="~/Report/admin_List.aspx" Text="admin report" 
+                                            Value="admin report"></asp:MenuItem>
+                                        <asp:MenuItem NavigateUrl="~/Report/DatewiseReport.aspx" 
+                                            Text="Datewise Report of Applied job" Value="Datewise Report of Applied job">
+                                        </asp:MenuItem>
+                                    </asp:MenuItem>
+                                    <asp:MenuItem NavigateUrl="~/master/HomePage.aspx" Text="Logout" Value="Logout">
+                                    </asp:MenuItem>
+                                </Items>
+                            </asp:Menu>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+        <tr>
+            <td >  <asp:ContentPlaceHolder ID="ContentPlaceHolder1" runat="server"></asp:ContentPlaceHolder>
+            </td>
+        </tr>
+        
+    </table>
+    
+    
+    
+    
+    
+    </form>
+</body>
+</html>

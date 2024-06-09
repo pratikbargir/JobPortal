@@ -1,0 +1,787 @@
+// seven uses:
+// options.cols - number of cols
+// options.rows - number of rows
+// options.duration
+// options.blur - level of blur (default = 50)
+// options.distance - distance of scattering (default = 20)
+function ws_seven(options, images, aCont){
+	var $ = jQuery;
+	var $this = $(this);
+	var distance = options.distance||5;
+	var columns = options.cols;
+	var rows = options.rows;
+	var duration = options.duration*2;
+	var blur_level = options.blur || 50;
+	var ul = aCont.find('.ws_list');
+	var effectCont = $('<div>').css({
+		position: 'absolute',
+		top: 0,
+		left: 0,
+		width: '100%',
+		height: '100%'
+	});
+	var blurCont = effectCont.clone().css('overflow', 'hidden');
+	effectCont.addClass('ws_effect ws_seven');
+	
+	// Canvas for blur
+	var useCanvas = !options.noCanvas && !window.opera && !!document.createElement("canvas").getContext;
+	var canvas;
+	
+	// Create parts
+	var partCont = $('<div>').addClass("ws_parts").css({
+		position:'absolute',
+		width : '100%',
+		height : '100%',
+		left: 0,
+		top: 0,
+		zIndex: 8,
+		transform: 'translate3d(0,0,0)'
+	});
+	var zoomCont = $('<div>').addClass("ws_zoom").css({
+		position:'absolute',
+		width: '100%',
+		height: '100%',
+		top: 0,
+		left: 0,
+		zIndex:2,
+		transform: 'translate3d(0,0,0)'
+	});
+	effectCont.append(partCont, zoomCont, blurCont).appendTo(aCont);
+	
+	var wnd = {
+		t: $(window).scrollTop(),
+		l: $(window).scrollLeft(),
+		w: $(window).width(),
+		h: $(window).height()
+	}
+
+	// init parts
+	var cf = Math.max((options.width||partCont.width())/(options.height||partCont.height()) || 3, 3);
+	columns = columns || Math.round(cf<1? 3: 3*cf); 
+	rows = rows || Math.round(cf<1? 3/cf: 3);
+
+	var partsOut = [];
+	var partsIn = [];
+	for (var index=0; index<columns*rows; index++){
+		var i = index % columns;
+		var j = Math.floor(index/columns);
+		
+		$(partsOut[index] = $('<div>')[0])
+		.css({
+			position:'absolute',
+			overflow:'hidden',
+			transform: 'translate3d(0,0,0)'
+		})
+		.appendTo(partCont).append(
+			$('<img>').css({
+				position:'absolute',
+				transform: 'translate3d(0,0,0)'
+			})
+		);
+		
+
+		$(partsIn[index] = $('<div>')[0])
+		.css({
+			position:'absolute',
+			overflow:'hidden',
+			transform: 'translate3d(0,0,0)'
+		})
+		.appendTo(zoomCont).append(
+			$('<img>').css({
+				position:'absolute',
+				transform: 'translate3d(0,0,0)'
+			})
+		);
+	}
+	partsOut = $(partsOut);
+	partsIn = $(partsIn);
+
+
+
+	
+	/* easings */
+	jQuery.extend( jQuery.easing,
+	{
+		easeOutQuart: function (x, t, b, c, d) {
+			return -c * ((t=t/d-1)*t*t*t - 1) + b;
+		},
+		easeInExpo: function (x, t, b, c, d) {
+			return (t==0) ? b : c * Math.pow(2, 10 * (t/d - 1)) + b;
+		},
+		easeInCirc: function (x, t, b, c, d) {
+			return -c * (Math.sqrt(1 - (t/=d)*t) - 1) + b;
+		}
+	});
+	
+	
+	function p_delay(cur, max){
+		return Math.abs( (max%2 ? 1 : 0)+((max - max % 2) / 2) - cur ) / max;
+	}
+	
+	function calc_coeff(leftfin, topfin, maxl, maxt){
+		var topk = (topfin >= maxt) ? (maxt)/(topfin) : 1;
+		var leftk = (leftfin >= maxl) ? (maxl)/(leftfin) : 1;
+
+		return {
+			l: leftk, 
+			t: topk, 
+			m: Math.min(leftk, topk)
+		};
+	}
+
+
+	function startAnimate(list, callback) {
+		var ended = 0;
+    	for(var k in list) (function(k, list) {
+    		var a = list[k];
+			wowAnimate(a.item,
+				a.begin, a.end, a.duration, a.delay, a.easing,
+				function() {
+					if(a.callback) {
+						a.callback();
+					}
+					ended++;
+					if(ended == list.length && callback) {
+						callback();
+					}
+				}
+			);
+		}(k, list));
+    }
+	
+	function setPos(partsOut, partsIn, imgParams, dir, callback){
+		var cwidth = partCont.width(),
+			cheight = partCont.height(),
+			new_w = distance*cwidth/columns,
+			new_h = distance*cheight/rows,
+			new_dur = duration*(dir?4:5)/(columns*rows),
+			eas = dir?"easeInExpo":"easeOutQuart";
+		var max_t = wnd.h + wnd.t - cheight/rows,
+			max_l = wnd.w + wnd.l - cwidth/columns,
+			min_t = partCont.offset().top + partCont.height(),
+			min_l = partCont.offset().left + partCont.width();
+		if(max_t < min_t) max_t = min_t;
+		if(max_l < min_l) max_l = min_l;
+
+		var itemsList = [];
+		
+		$(partsOut).each(function(index){
+			var i = index % columns,
+			j = Math.floor(index/columns),
+			new_delay = duration*0.2*(p_delay(i, columns)*45+j*4)/(columns*rows),
+			
+			leftfin = partCont.offset().left + wnd.l + new_w*i - cwidth*distance/2 + new_w,
+			topfin = partCont.offset().top + wnd.t +new_h*j - cheight*distance/2 + new_h,
+			k = calc_coeff(leftfin, topfin, max_l, max_t);
+			
+			// if support transforms
+			if(options.support.transform) {
+				var part_begin = {
+						opacity: 1,
+						translate: [
+							cwidth*i/columns,
+							cheight*j/rows,
+							0
+						],
+						scale: 1,
+						width: cwidth/columns,
+						height: cheight/rows,
+						zIndex: Math.ceil(100 - p_delay(i, columns)*100)
+					}
+					, part_end = {
+						opacity: 0,
+						translate: [
+							// yes, magic number 0.115
+							// i don't know why offset is not correct without this number
+							(new_w*i - cwidth*distance/2.115)*k.l,
+							(new_h*j - cheight*distance/2.115)*k.t,
+							0
+						],
+						scale: distance*k.m,
+						width: cwidth/columns,
+						height: cheight/rows,
+						zIndex: Math.ceil(100 - p_delay(i, columns)*100)
+					};
+
+					$(this).find('img').css({
+						transform: 'translate3d('+(-cwidth * i/columns + imgParams.marginLeft)+'px,'+(-cheight * j/rows + imgParams.marginTop)+'px,0px)',
+						width: imgParams.width,
+						height: imgParams.height
+					});
+			}
+
+			// if no support transforms
+			else {
+				var part_begin = {
+						opacity: 1,
+						left: cwidth*i/columns,
+						top : cheight*j/rows,
+						width: cwidth/columns,
+						height: cheight/rows,
+						zIndex: Math.ceil(100 - p_delay(i, columns)*100)
+					}
+					, part_end = {
+						opacity: 0,
+						left: (new_w*i - cwidth*distance/2)*k.l,
+						top : (new_h*j - cheight*distance/2)*k.t,
+						width : new_w*k.m,
+						height : new_h*k.m
+					}
+					, img_begin = {
+						left:-(cwidth * i/columns) + imgParams.marginLeft,
+						top :-(cheight * j/rows) + imgParams.marginTop,
+						width: imgParams.width,
+						height: imgParams.height
+					}
+					, img_end = {
+						left:-distance*(cwidth/columns*i - imgParams.marginLeft)*k.m,
+						top :-distance*(cheight/rows*j - imgParams.marginTop)*k.m,
+						width : distance*imgParams.width*k.m,
+						height : distance*imgParams.height*k.m
+					};
+			}
+				
+			if(!dir){
+				var tmp = part_begin;
+				part_begin = part_end;
+				part_end = tmp;
+				tmp = img_begin;
+				img_begin = img_end;
+				img_end = tmp;
+			}
+
+			// item set params
+			itemsList.push({
+				item: $(this).show(),
+				begin: part_begin,
+				end: part_end,
+				easing: eas,
+
+				delay: new_delay,
+				duration: new_dur,
+
+				callback: dir?function() {
+					this.item.hide();
+				}:0
+			});
+
+			// img set params
+			if(img_begin) itemsList.push({
+				item: $(this).find('img'),
+				begin: img_begin,
+				end: img_end,
+				easing: eas,
+				
+				delay: new_delay,
+				duration: new_dur
+			});
+		});
+		
+		if (dir){
+			$(partsIn).each(function(index){
+				var i = index % columns;
+				var j = Math.floor(index/columns);
+				var new_delay = duration*0.2 + duration*0.15*(p_delay(i, columns)*35+j*4)/(columns*rows);
+				var new_dur = duration*4/(columns*rows);
+
+				// if support transforms
+				if(options.support.transform) {
+					var part_begin = {
+							opacity: 0,
+							translate: [
+								cwidth/2,
+								cheight/2,
+								0
+							],
+							scale: 0,
+							width: cwidth/columns,
+							height: cheight/rows,
+							zIndex: Math.ceil(100 - p_delay(i, columns)*100)
+						}
+						, part_end = {
+							opacity: 1,
+							translate: [
+								cwidth*i/columns,
+								cheight*j/rows,
+								0
+							],
+							scale: 1,
+							width: cwidth/columns,
+							height: cheight/rows,
+							zIndex: Math.ceil(100 - p_delay(i, columns)*100)
+						};
+					$(this).find('img').css({
+						transform: 'translate3d('+(-cwidth * i/columns + imgParams.marginLeft)+'px,'+(-cheight* j/rows + imgParams.marginTop)+'px,0px)',
+						width: imgParams.width,
+						height: imgParams.height
+					});
+				}
+
+				// if no support transforms
+				else {
+					var part_begin = {
+							left: cwidth/2,
+							top : cheight/2,
+							width : 0,
+							height : 0,
+							zIndex: Math.ceil(100 - p_delay(i, columns)*100)
+						}
+						, part_end = {
+							left: cwidth*i/columns,
+							top : cheight*j/rows,
+							width: cwidth/columns,
+							height: cheight/rows
+						}
+						, img_begin = {
+							left: 0,
+							top : 0,
+							width : 0,
+							height : 0
+						}
+						, img_end = {
+							left:- cwidth * i/columns + imgParams.marginLeft,
+							top :- cheight* j/rows + imgParams.marginTop,
+							width: imgParams.width,
+							height: imgParams.height
+						};
+				}
+
+				// item set params
+				itemsList.push({
+					item: $(this),
+					begin: part_begin,
+					end: part_end,
+					easing: "easeOutBack",
+
+					delay: new_delay,
+					duration: new_dur
+				});
+
+				// img set params
+				if(img_begin) itemsList.push({
+					item: $(this).find('img'),
+					begin: img_begin,
+					end: img_end,
+					easing: "easeOutBack",
+					
+					delay: new_delay,
+					duration: new_dur
+				});
+			});
+			zoomCont.delay(duration*0.1).animate({opacity: 1}, duration*0.2, "easeInCirc")
+		}
+		
+		startAnimate(itemsList, callback);
+
+		return {
+			stop: function (){
+				callback()
+			}
+		}
+	};
+	
+	
+	var thread;
+	this.go = function(newIdx, curIdx, direction){
+		if(thread) return curIdx;
+		if(direction == undefined)
+			direction = (curIdx == 0 && newIdx != curIdx + 1) || (newIdx == curIdx - 1) ? false : true;
+		
+		wnd.t = $(window).scrollTop();
+		wnd.l = $(window).scrollLeft();
+		wnd.w = $(window).width();
+		wnd.h = $(window).height();
+		
+		/* initialization begin */
+		var imgParams = $(images.get(curIdx));
+			imgParams = {
+				width: imgParams.width(),
+				height: imgParams.height(),
+				marginTop: parseFloat(imgParams.css('marginTop')),
+				marginLeft: parseFloat(imgParams.css('marginLeft'))
+			}
+
+		// images init
+		partsOut.find('img').attr('src', images.get(direction?curIdx:newIdx).src);
+		partsIn.find('img').attr('src', images.get(newIdx).src);
+
+		partCont.show();
+		if(direction) {
+			zoomCont.show();
+		}
+		/* initialization end */
+
+			
+		var curBlur = 0;
+		if(direction){
+			if (useCanvas){
+				try {
+					document.createElement("canvas").getContext('2d').getImageData( 0, 0, 1, 1 );
+				} catch(e) {
+					useCanvas = 0;
+				}
+				
+				// pre-create canvases
+				canvas ='<canvas width="'+effectCont.width+'" height="'+effectCont.height+'"/>';
+				canvas = $(canvas).css({
+					'z-index':1, // see wowslider.js first comment
+					position:'absolute',
+					left:0,
+					top:0
+				}).css(imgParams).appendTo(blurCont);
+				
+				
+				// prepare blur
+				curBlur = blur($(images.get(curIdx)), imgParams, blur_level, canvas.get(0));
+			}
+			
+			if (!useCanvas || !curBlur){
+				useCanvas = 0; // correct useCanvas if curBlur with useCanvas=1 don't work
+				curBlur = blur($(images.get(curIdx)), imgParams, 8);
+				if(canvas) {
+					canvas.remove();
+					canvas = 0;
+				}
+			}
+		}
+		
+		// start 
+		thread = new setPos(partsOut, partsIn, imgParams, direction, function(){
+			$this.trigger('effectEnd');
+			partCont.hide();
+			zoomCont.hide();
+			if(canvas) {
+				canvas.remove();
+			} else if(curBlur) {
+				curBlur.remove();
+			}
+			thread = 0;
+		});
+	}
+	
+	
+	
+	
+	
+	function blur(img, imgParams, depth,canvas){
+		var zIndex=(parseInt(img.parent().css('z-index')) || 0) + 1;// z-index of blur element
+
+		if (useCanvas){
+	
+			var ctx = canvas.getContext('2d');
+			ctx.drawImage(img.get(0), 0, 0, imgParams.width, imgParams.height);
+			if (!stackBlurCanvasRGB( ctx, 0, 0, canvas.width, canvas.height, depth))
+				return 0;
+			
+			return $(canvas);
+		};
+
+
+		// --------------- create blur with some images ------------------
+		// blur content
+		var cont =  $('<div></div>').css({
+			position	:'absolute',
+			'z-index'	: zIndex,
+			left 		: 0,
+			top 		: 0,
+			overflow	: 'hidden'
+		}).css(imgParams).appendTo(blurCont);
+		
+		// prepare
+		var fi = (Math.sqrt(5)+1)/2;// 1.618033988749895
+		var dr = 1-fi/2; // delta of angle
+		
+		// create blur images
+		for (var i=0; dr*i<depth; i++){
+			// using golden ratio
+			var al = Math.PI*fi*i;
+			var r=(dr*i+1);
+			var x = r*Math.cos(al);
+			var y = r*Math.sin(al);
+			// using random
+			//var r=depth;
+			//var x = -r+(r*2)*Math.random();
+			//var y = -r+(r*2)*Math.random();
+			
+			// create new
+			$(document.createElement("img")).attr('src',img.attr('src')).css({
+				opacity 	: 1/(i/1.8+1),
+				position	:'absolute',
+				'z-index'	: zIndex,
+				left 		: Math.round(x)+'px',
+				top 		: Math.round(y)+'px',
+				width 		: '100%',
+				height 		: '100%'
+			}).appendTo(cont);		
+		};
+		
+		return cont;
+	};
+	
+	/*
+		StackBlur - a fast almost Gaussian Blur For Canvas
+		Version: 	0.5
+		Website:	http://www.quasimondo.com/StackBlurForCanvas
+	*/
+	var mul_table = [
+			512,512,456,512,328,456,335,512,405,328,271,456,388,335,292,512,
+			454,405,364,328,298,271,496,456,420,388,360,335,312,292,273,512,
+			482,454,428,405,383,364,345,328,312,298,284,271,259,496,475,456,
+			437,420,404,388,374,360,347,335,323,312,302,292,282,273,265,512,
+			497,482,468,454,441,428,417,405,394,383,373,364,354,345,337,328,
+			320,312,305,298,291,284,278,271,265,259,507,496,485,475,465,456,
+			446,437,428,420,412,404,396,388,381,374,367,360,354,347,341,335,
+			329,323,318,312,307,302,297,292,287,282,278,273,269,265,261,512,
+			505,497,489,482,475,468,461,454,447,441,435,428,422,417,411,405,
+			399,394,389,383,378,373,368,364,359,354,350,345,341,337,332,328,
+			324,320,316,312,309,305,301,298,294,291,287,284,281,278,274,271,
+			268,265,262,259,257,507,501,496,491,485,480,475,470,465,460,456,
+			451,446,442,437,433,428,424,420,416,412,408,404,400,396,392,388,
+			385,381,377,374,370,367,363,360,357,354,350,347,344,341,338,335,
+			332,329,326,323,320,318,315,312,310,307,304,302,299,297,294,292,
+			289,287,285,282,280,278,275,273,271,269,267,265,263,261,259];
+	var shg_table = [
+			 9, 11, 12, 13, 13, 14, 14, 15, 15, 15, 15, 16, 16, 16, 16, 17, 
+			17, 17, 17, 17, 17, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18, 19, 
+			19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 20, 20, 20,
+			20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 21,
+			21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21,
+			21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 22, 22, 22, 22, 22, 22, 
+			22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22,
+			22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 23, 
+			23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
+			23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
+			23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 
+			23, 23, 23, 23, 23, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 
+			24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
+			24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
+			24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
+			24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24 ];
+
+
+
+	function stackBlurCanvasRGB( context, top_x, top_y, width, height, radius )
+	{
+		if ( isNaN(radius) || radius < 1 ) return;
+		radius |= 0;
+		
+
+		var imageData;
+		
+		try {
+			imageData = context.getImageData( top_x, top_y, width, height );
+		} catch(e) {
+			console.log("error:unable to access image data: " + e)
+			return false;
+		}
+				
+		var pixels = imageData.data;
+				
+		var x, y, i, p, yp, yi, yw, r_sum, g_sum, b_sum,
+		r_out_sum, g_out_sum, b_out_sum,
+		r_in_sum, g_in_sum, b_in_sum,
+		pr, pg, pb, rbs;
+				
+		var div = radius + radius + 1;
+		var w4 = width << 2;
+		var widthMinus1  = width - 1;
+		var heightMinus1 = height - 1;
+		var radiusPlus1  = radius + 1;
+		var sumFactor = radiusPlus1 * ( radiusPlus1 + 1 ) / 2;
+		
+		var stackStart = new BlurStack();
+		var stack = stackStart;
+		for ( i = 1; i < div; i++ )
+		{
+			stack = stack.next = new BlurStack();
+			if ( i == radiusPlus1 ) var stackEnd = stack;
+		}
+		stack.next = stackStart;
+		var stackIn = null;
+		var stackOut = null;
+		
+		yw = yi = 0;
+		
+		var mul_sum = mul_table[radius];
+		var shg_sum = shg_table[radius];
+		
+		for ( y = 0; y < height; y++ )
+		{
+			r_in_sum = g_in_sum = b_in_sum = r_sum = g_sum = b_sum = 0;
+			
+			r_out_sum = radiusPlus1 * ( pr = pixels[yi] );
+			g_out_sum = radiusPlus1 * ( pg = pixels[yi+1] );
+			b_out_sum = radiusPlus1 * ( pb = pixels[yi+2] );
+			
+			r_sum += sumFactor * pr;
+			g_sum += sumFactor * pg;
+			b_sum += sumFactor * pb;
+			
+			stack = stackStart;
+			
+			for( i = 0; i < radiusPlus1; i++ )
+			{
+				stack.r = pr;
+				stack.g = pg;
+				stack.b = pb;
+				stack = stack.next;
+			}
+			
+			for( i = 1; i < radiusPlus1; i++ )
+			{
+				p = yi + (( widthMinus1 < i ? widthMinus1 : i ) << 2 );
+				r_sum += ( stack.r = ( pr = pixels[p])) * ( rbs = radiusPlus1 - i );
+				g_sum += ( stack.g = ( pg = pixels[p+1])) * rbs;
+				b_sum += ( stack.b = ( pb = pixels[p+2])) * rbs;
+				
+				r_in_sum += pr;
+				g_in_sum += pg;
+				b_in_sum += pb;
+				
+				stack = stack.next;
+			}
+			
+			
+			stackIn = stackStart;
+			stackOut = stackEnd;
+			for ( x = 0; x < width; x++ )
+			{
+				pixels[yi]   = (r_sum * mul_sum) >> shg_sum;
+				pixels[yi+1] = (g_sum * mul_sum) >> shg_sum;
+				pixels[yi+2] = (b_sum * mul_sum) >> shg_sum;
+				
+				r_sum -= r_out_sum;
+				g_sum -= g_out_sum;
+				b_sum -= b_out_sum;
+				
+				r_out_sum -= stackIn.r;
+				g_out_sum -= stackIn.g;
+				b_out_sum -= stackIn.b;
+				
+				p =  ( yw + ( ( p = x + radius + 1 ) < widthMinus1 ? p : widthMinus1 ) ) << 2;
+				
+				r_in_sum += ( stackIn.r = pixels[p]);
+				g_in_sum += ( stackIn.g = pixels[p+1]);
+				b_in_sum += ( stackIn.b = pixels[p+2]);
+				
+				r_sum += r_in_sum;
+				g_sum += g_in_sum;
+				b_sum += b_in_sum;
+				
+				stackIn = stackIn.next;
+				
+				r_out_sum += ( pr = stackOut.r );
+				g_out_sum += ( pg = stackOut.g );
+				b_out_sum += ( pb = stackOut.b );
+				
+				r_in_sum -= pr;
+				g_in_sum -= pg;
+				b_in_sum -= pb;
+				
+				stackOut = stackOut.next;
+
+				yi += 4;
+			}
+			yw += width;
+		}
+
+		
+		for ( x = 0; x < width; x++ )
+		{
+			g_in_sum = b_in_sum = r_in_sum = g_sum = b_sum = r_sum = 0;
+			
+			yi = x << 2;
+			r_out_sum = radiusPlus1 * ( pr = pixels[yi]);
+			g_out_sum = radiusPlus1 * ( pg = pixels[yi+1]);
+			b_out_sum = radiusPlus1 * ( pb = pixels[yi+2]);
+			
+			r_sum += sumFactor * pr;
+			g_sum += sumFactor * pg;
+			b_sum += sumFactor * pb;
+			
+			stack = stackStart;
+			
+			for( i = 0; i < radiusPlus1; i++ )
+			{
+				stack.r = pr;
+				stack.g = pg;
+				stack.b = pb;
+				stack = stack.next;
+			}
+			
+			yp = width;
+			
+			for( i = 1; i <= radius; i++ )
+			{
+				yi = ( yp + x ) << 2;
+				
+				r_sum += ( stack.r = ( pr = pixels[yi])) * ( rbs = radiusPlus1 - i );
+				g_sum += ( stack.g = ( pg = pixels[yi+1])) * rbs;
+				b_sum += ( stack.b = ( pb = pixels[yi+2])) * rbs;
+				
+				r_in_sum += pr;
+				g_in_sum += pg;
+				b_in_sum += pb;
+				
+				stack = stack.next;
+			
+				if( i < heightMinus1 )
+				{
+					yp += width;
+				}
+			}
+			
+			yi = x;
+			stackIn = stackStart;
+			stackOut = stackEnd;
+			for ( y = 0; y < height; y++ )
+			{
+				p = yi << 2;
+				pixels[p]   = (r_sum * mul_sum) >> shg_sum;
+				pixels[p+1] = (g_sum * mul_sum) >> shg_sum;
+				pixels[p+2] = (b_sum * mul_sum) >> shg_sum;
+				
+				r_sum -= r_out_sum;
+				g_sum -= g_out_sum;
+				b_sum -= b_out_sum;
+				
+				r_out_sum -= stackIn.r;
+				g_out_sum -= stackIn.g;
+				b_out_sum -= stackIn.b;
+				
+				p = ( x + (( ( p = y + radiusPlus1) < heightMinus1 ? p : heightMinus1 ) * width )) << 2;
+				
+				r_sum += ( r_in_sum += ( stackIn.r = pixels[p]));
+				g_sum += ( g_in_sum += ( stackIn.g = pixels[p+1]));
+				b_sum += ( b_in_sum += ( stackIn.b = pixels[p+2]));
+				
+				stackIn = stackIn.next;
+				
+				r_out_sum += ( pr = stackOut.r );
+				g_out_sum += ( pg = stackOut.g );
+				b_out_sum += ( pb = stackOut.b );
+				
+				r_in_sum -= pr;
+				g_in_sum -= pg;
+				b_in_sum -= pb;
+				
+				stackOut = stackOut.next;
+				
+				yi += width;
+			}
+		}
+		
+		context.putImageData( imageData, top_x, top_y );
+		return true;
+	}
+
+	function BlurStack()
+	{
+		this.r = 0;
+		this.g = 0;
+		this.b = 0;
+		this.a = 0;
+		this.next = null;
+	}
+
+}

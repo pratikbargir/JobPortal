@@ -1,0 +1,192 @@
+﻿
+<%@ Master Language="C#" AutoEventWireup="true" CodeFile="candidatemaster.master.cs" Inherits="candidate_login_candidate" %>
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head runat="server">
+    <title>Untitled Page</title>
+    <asp:ContentPlaceHolder id="head" runat="server">
+    </asp:ContentPlaceHolder>
+    <style type="text/css">
+
+        .style3
+        {
+            font-family: Arial, Helvetica, sans-serif;
+            font-weight: bold;
+            font-size: large;
+        }
+        .style4
+        {
+            font-size: x-large;
+            font-weight: bold;
+        }
+        .style5
+        {
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        .style6
+        {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: x-large;
+        }
+        .style7
+        {
+            color: #CC0000;
+        }
+        .style13
+        {
+            font-size: 10pt;
+        }
+        .style13
+        {
+            width: 100%;
+            background-color: #800000;
+        }
+        </style>
+</head>
+<body>
+    <form id="form1" runat="server">
+    
+    
+    
+    
+    
+    
+    
+    <table cellspacing="0" width="100%" border="1" 
+        style="border-style: solid; border-top-width: thick; border-color: #339933">
+        
+        <tr>
+            <td class="style14" style="text-align: left" valign="top">
+                <asp:Image ID="Image3" runat="server" Height="50px" 
+                    ImageUrl="~/images/joblogo.png" Width="319px" />
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="style4"><span 
+                    class="style5">Welcome
+                to
+                <asp:Label ID="Label1" runat="server" Text="Label" style="color: #CC0000"></asp:Label>
+                <span class="style7">&#39;s</span>&nbsp;Profile</span></span><span class="style6">&nbsp;&nbsp;&nbsp;
+                &nbsp;&nbsp;<asp:Label ID="Label3" runat="server" 
+                    style="font-weight: 700; color: #CC0000; font-size: small;" Text="Label" 
+                    Visible="False"></asp:Label>
+&nbsp;</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <asp:Label ID="Label2" runat="server" 
+                    style="font-weight: 700; font-size: large; font-family: Arial, Helvetica, sans-serif" 
+                    Text="Label"></asp:Label>
+                
+                <span class="style3">&nbsp;</span>
+            </td>
+        </tr>
+        <tr>
+            <td valign="top">
+                <table align="center"  cellspacing="0" class="" width="100%" BackColor="#003399"
+                    style="border-style: solid none none none; border-width: thick; border-color: #FF3300">
+                    <tr>
+                        <td align="center" 
+                            style="font-family: Arial, Helvetica, sans-serif; font-size: medium; font-weight: bold; color: #FFFFFF" 
+                            valign="top" bgcolor="#339933" height="30px">
+                            <asp:Menu ID="Menu1" runat="server" BackColor="#339933" ForeColor="White" 
+                                Orientation="Horizontal" Width="100%" style="" 
+                                Height="100%" onmenuitemclick="Menu1_MenuItemClick">
+                                <DynamicHoverStyle BackColor="#CC0000" />
+                                <DynamicMenuStyle BackColor="Maroon" />
+                                <DynamicMenuItemStyle HorizontalPadding=""
+                                    Width="240px" />
+                                <StaticHoverStyle BackColor="#CC0000" Font-Bold="True" 
+                                    Font-Names="Arial Rounded MT Bold" ForeColor="White" Height="30px" />
+                                <Items>
+                                    <asp:MenuItem Text="Home" Value="Home" 
+                                        NavigateUrl="~/candidatelogin/CandidateHome.aspx"></asp:MenuItem>
+                                    <asp:MenuItem Text="Manage Profile" Value="Manage Profile" 
+                                        NavigateUrl="~/candidatelogin/ManageProfile.aspx"></asp:MenuItem>
+                                    <asp:MenuItem NavigateUrl="~/candidatelogin/Advance Search.aspx" 
+                                        Text="Advance Search" Value="Advance Search"></asp:MenuItem>
+                                    <asp:MenuItem Text=" Job Applied" Value="Manage Job" 
+                                        NavigateUrl="~/candidatelogin/Jobapplied.aspx"></asp:MenuItem>
+                                    <asp:MenuItem Text="Change Password" Value="Change Password" 
+                                        NavigateUrl="~/candidatelogin/changepassword.aspx"></asp:MenuItem>
+                                    <asp:MenuItem NavigateUrl="~/master/HomePage.aspx" Text="Log Out" 
+                                        Value="Log Out"></asp:MenuItem>
+                                </Items>
+                            </asp:Menu>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="center" 
+                            style="font-family: Arial, Helvetica, sans-serif; font-size: medium; font-weight: bold; color: #FFFFFF" 
+                            valign="top" bgcolor="#339933" height="30px">
+                
+                  <table align="center" cellpadding="10" cellspacing="0" class="style13" 
+                     style="border-style: solid none none none; border-width: thick; border-color: #FF3300">
+                    <tr>
+                        <td style="font-family: Arial, Helvetica, sans-serif; font-size: medium; font-weight: bold; color: #FFFFFF" 
+                            align="center" height="16" valign="top">
+                            <asp:Menu ID="Menu3" runat="server" BackColor="Maroon" ForeColor="White" 
+                                Orientation="Horizontal" Width="100%" style="" 
+                                Height="20px" onmenuitemclick="Menu3_MenuItemClick">
+                                <DynamicHoverStyle BackColor="#CC0000" />
+                                <DynamicMenuStyle BackColor="Maroon" />
+                                <DynamicMenuItemStyle HorizontalPadding="10px" VerticalPadding="3px" 
+                                    Width="240px" />
+                                <StaticHoverStyle BackColor="#CC0000" Font-Bold="True" 
+                                    Font-Names="Arial Rounded MT Bold" ForeColor="White" />
+                                <Items>
+                                    <asp:MenuItem Text="All Jobs " Value="All Jobs " 
+                                        NavigateUrl="~/candidatelogin/All Jobs.aspx"></asp:MenuItem>
+                                    <asp:MenuItem Text="Job By Category" Value="Job By Category">
+                                        <asp:MenuItem Text="IT" Value="IT"></asp:MenuItem>
+                                        <asp:MenuItem Text="Marketing" Value="Marketing"></asp:MenuItem>
+                                        <asp:MenuItem Text="HR" Value="HR"></asp:MenuItem>
+                                        <asp:MenuItem Text="Sales" Value="Sales"></asp:MenuItem>
+                                        <asp:MenuItem Text="Lecturer" Value="Lecturer"></asp:MenuItem>
+                                    </asp:MenuItem>
+                                    <asp:MenuItem Text="Job By Location" Value="Job By Location">
+                                        <asp:MenuItem Text="Pune" Value="Pune"></asp:MenuItem>
+                                        <asp:MenuItem Text="Mumbai" Value="Mumbai"></asp:MenuItem>
+                                        <asp:MenuItem Text="Banglore" Value="Banglore"></asp:MenuItem>
+                                        <asp:MenuItem Text="Hyderabad" Value="Hyderabad"></asp:MenuItem>
+                                    </asp:MenuItem>
+                                    <asp:MenuItem Text="Job By Desingnation" Value="Job By Designation">
+                                        <asp:MenuItem Text="Manager" Value="Manager"></asp:MenuItem>
+                                        <asp:MenuItem Text="Assistant Manager" Value="Assistant Manager"></asp:MenuItem>
+                                        <asp:MenuItem Text="Trainee" Value="Trainee"></asp:MenuItem>
+                                        <asp:MenuItem Text="Developer" Value="Developer"></asp:MenuItem>
+                                        <asp:MenuItem Text="Tester" Value="Tester"></asp:MenuItem>
+                                        <asp:MenuItem Text="SalesMan" Value="SalesMan"></asp:MenuItem>
+                                    </asp:MenuItem>
+                                    <asp:MenuItem Text="Job By Company" Value="Job By Company" 
+                                        NavigateUrl="~/candidatelogin/by company.aspx">
+                                        <asp:MenuItem Text="ACN" Value="ACN"></asp:MenuItem>
+                                        <asp:MenuItem Text="Amway" Value="Amway"></asp:MenuItem>
+                                        <asp:MenuItem Text="Oriflame" Value="Oriflame"></asp:MenuItem>
+                                        <asp:MenuItem Text="TCS" Value="TCS"></asp:MenuItem>
+                                        <asp:MenuItem Text="Wipro" Value="Wipro"></asp:MenuItem>
+                                        <asp:MenuItem Text="Infosys" Value="Infosys"></asp:MenuItem>
+                                        <asp:MenuItem Text="NatureShine" Value="NatureShine"></asp:MenuItem>
+                                    </asp:MenuItem>
+                                </Items>
+                            </asp:Menu>
+                        </td>
+                         </tr>
+                    </table>
+                
+                
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+        <tr>
+            <td >  <asp:ContentPlaceHolder ID="ContentPlaceHolder1" runat="server"></asp:ContentPlaceHolder>
+            </td>
+        </tr>
+        
+    </table>
+    
+    
+    
+    
+    
+    </form>
+    </body>
+</html>
