@@ -47,22 +47,29 @@ Mobile Application: Optional mobile app for job seekers and employers to manage 
 
 Pictural view of Job Portal Website:
 
+
 **Home Page:**
+
 ![image](https://github.com/user-attachments/assets/f36e6153-ee83-4cdc-872c-5871868532d1)
 
 **About Page**
+
 ![image](https://github.com/user-attachments/assets/2bc556e5-ad4c-42f1-a78b-64752e2f8202)
 
 **Service Page**
+
 ![image](https://github.com/user-attachments/assets/83453e11-59a1-45a0-b5d5-c92ee17fb3c1)
 
 **Login Form**
+
 ![image](https://github.com/user-attachments/assets/0f4cd377-2c2d-4130-8807-16cdc143aa13)
 
 **Registration Form**
+
 ![image](https://github.com/user-attachments/assets/5ff76e67-3d5c-4f37-8717-169d68bee4ad)
 
 **Jobs by Category **
+
 ![image](https://github.com/user-attachments/assets/3042e37d-53b3-480c-86a0-ae0ddd0c8f61)
 
 
